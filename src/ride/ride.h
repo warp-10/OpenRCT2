@@ -82,7 +82,10 @@ typedef struct{
 	uint32 var_4C;				// 0x4C , 0x66
 	uint32 no_vehicle_images;	// 0x50 , 0x6A
 	uint8 no_seating_rows;		// 0x54 , 0x6E
-	uint8 pad_55[0x5];
+	uint8 pad_55[0x2];
+	uint8 var_57;				// 0x57 , 0x71
+	uint8 pad_58;
+	uint8 var_59;				// 0x59 , 0x73
 	uint8 var_5A;				// 0x5A , 0x74
 	uint8 pad_5B;				// 0x5B , 0x75
 	uint8 var_5C;				// 0x5C , 0x76

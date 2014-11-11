@@ -76,8 +76,10 @@ typedef struct {
 	uint8 peep_tshirt_colours[32];	// 0x92
 	uint8 num_seats;				// 0xB2
 	uint8 num_peeps;				// 0xB3
-	uint8 next_free_seat;		// 0xB4
-	uint8 pad_B5[0x06];
+	uint8 next_free_seat;			// 0xB4
+	uint8 pad_B5[0x03];
+	uint16 var_B8;
+	uint8 pad_BA;
 	uint8 sound1_id;				// 0xBB
 	uint8 sound1_volume;			// 0xBC
 	uint8 sound2_id;				// 0xBD

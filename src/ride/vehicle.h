@@ -69,7 +69,8 @@ typedef struct {
 	uint16 var_48;
 	uint8 pad_4A;
 	uint8 current_station;			// 0x4B
-	uint8 pad_4C[0x4];
+	uint16 var_4C;
+	uint8 pad_4E[0x2];
 	uint8 status;					// 0x50
 	uint8 var_51;
 	uint16 peep[32];				// 0x52
@@ -85,7 +86,7 @@ typedef struct {
 	uint8 sound2_id;				// 0xBD
 	uint8 sound2_volume;			// 0xBE
 	sint8 var_BF;
-	uint8 pad_C0[0x02];
+	uint16 var_C0;
 	uint8 speed;					// 0xC2
 	uint8 pad_C3[0x09];
 	uint8 scream_sound_id;			// 0xCC
@@ -145,6 +146,7 @@ void vehicle_set_map_toolbar(rct_vehicle *vehicle);
 int vehicle_is_used_in_pairs(rct_vehicle *vehicle);
 rct_vehicle *vehicle_get_head(rct_vehicle *vehicle);
 int vehicle_get_total_num_peeps(rct_vehicle *vehicle);
+void vehicle_invalidate_window(rct_vehicle *vehicle);
 
 /** Helper macro until rides are stored in this module. */
 #define GET_VEHICLE(sprite_index) &(g_sprite_list[sprite_index].vehicle)

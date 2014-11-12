@@ -88,7 +88,7 @@ typedef struct {
 	uint8 pad_C0[0x02];
 	uint8 speed;					// 0xC2
 	uint8 pad_C3[0x09];
-	uint8 var_CC;
+	uint8 scream_sound_id;			// 0xCC
 	uint8 var_CD;
 	union {
 		uint8 var_CE;
@@ -144,6 +144,7 @@ void vehicle_get_g_forces(rct_vehicle *vehicle, int *verticalG, int *lateralG);
 void vehicle_set_map_toolbar(rct_vehicle *vehicle);
 int vehicle_is_used_in_pairs(rct_vehicle *vehicle);
 rct_vehicle *vehicle_get_head(rct_vehicle *vehicle);
+int vehicle_get_total_num_peeps(rct_vehicle *vehicle);
 
 /** Helper macro until rides are stored in this module. */
 #define GET_VEHICLE(sprite_index) &(g_sprite_list[sprite_index].vehicle)

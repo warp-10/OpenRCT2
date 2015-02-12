@@ -24,6 +24,7 @@
 #include <argparse/argparse.h>
 #include "addresses.h"
 #include "cmdline.h"
+#include "network/network.h"
 #include "openrct2.h"
 #include "platform/platform.h"
 
@@ -51,12 +52,15 @@ static const char *const usage[] = {
 int cmdline_run(const char **argv, int argc)
 {
 	// 
-	int version = 0, verbose = 0, width = 0, height = 0;
+	int version = 0, verbose = 0, width = 0, height = 0, port = 0;
+	char *server = NULL;
 
 	argparse_option_t options[] = {
 		OPT_HELP(),
 		OPT_BOOLEAN('v', "version", &version, "show version information and exit"),
 		OPT_BOOLEAN(0, "verbose", &verbose, "log verbose messages"),
+		OPT_STRING(0, "server", &server, "server to connect to"),
+		OPT_INTEGER(0, "port", &port, "port"),
 		OPT_END()
 	};
 
@@ -73,6 +77,16 @@ int cmdline_run(const char **argv, int argc)
 
 	if (verbose)
 		_log_levels[DIAGNOSTIC_LEVEL_VERBOSE] = 1;
+
+	if (port != 0) {
+		gNetworkStart = NETWORK_SERVER;
+		gNetworkStartPort = port;
+	}
+
+	if (server != NULL) {
+		gNetworkStart = NETWORK_CLIENT;
+		strncpy(gNetworkStartHost, server, sizeof(gNetworkStartHost));
+	}
 
 	if (argc != 0) {
 		if (_stricmp(argv[0], "intro") == 0) {

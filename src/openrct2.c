@@ -25,6 +25,7 @@
 #include "config.h"
 #include "editor.h"
 #include "localisation/localisation.h"
+#include "network/network.h"
 #include "openrct2.h"
 #include "platform/platform.h"
 #include "platform/osinterface.h"
@@ -47,10 +48,10 @@ void openrct2_launch()
 	config_load();
 
 	// TODO add configuration option to allow multiple instances
-	if (!platform_lock_single_instance()) {
-		fprintf(stderr, "OpenRCT2 is already running.\n");
-		return;
-	}
+	// if (!platform_lock_single_instance()) {
+	// 	fprintf(stderr, "OpenRCT2 is already running.\n");
+	// 	return;
+	// }
 
 	get_system_info();
 	audio_init();
@@ -86,8 +87,15 @@ void openrct2_launch()
 		break;
 	}
 
+	if (gNetworkStart == NETWORK_CLIENT) {
+		network_begin_client(gNetworkStartHost, gNetworkStartPort);
+	} else if (gNetworkStart == NETWORK_SERVER) {
+		network_begin_server(gNetworkStartPort);
+	}
+
 	log_verbose("begin openrct2 loop");
 	openrct2_loop();
+	network_close();
 	osinterface_free();
 
 	// HACK Some threads are still running which causes the game to not terminate. Investigation required!
@@ -115,6 +123,7 @@ static void openrct2_loop()
 
 		osinterface_process_messages();
 		rct2_update();
+		network_update();
 		osinterface_draw();
 	} while (!_finished);
 }

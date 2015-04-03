@@ -461,7 +461,7 @@ int paint_ride_entry(int flags, int ebx, int ecx, int edx, rct_drawpixelinfo* dp
 		for (int i = 0; i < 4; ++i){
 			rct_ride_type_vehicle* rideVehicleEntry = &ride_type->vehicles[i];
 
-			if (rideVehicleEntry->var_0C & 1){
+			if (rideVehicleEntry->available_sprites & 1){
 				int al = 1;
 				if (rideVehicleEntry->var_14 & 2)
 				{
@@ -507,12 +507,12 @@ int paint_ride_entry(int flags, int ebx, int ecx, int edx, rct_drawpixelinfo* dp
 					int b = rideVehicleEntry->var_16 * 32;
 
 					if (rideVehicleEntry->var_12 & 0x800) b /= 2;
-					if (rideVehicleEntry->var_0C & 0x8000) b /= 8;
+					if (rideVehicleEntry->available_sprites & 0x8000) b /= 8;
 
 					image_index += b;
 
 					// Incline 25
-					if (rideVehicleEntry->var_0C & 0x2){
+					if (rideVehicleEntry->available_sprites & 0x2){
 						rideVehicleEntry->var_20 = image_index;
 						b = rideVehicleEntry->var_16 * 72;
 						if (rideVehicleEntry->var_12 & 0x4000)
@@ -522,81 +522,81 @@ int paint_ride_entry(int flags, int ebx, int ecx, int edx, rct_drawpixelinfo* dp
 					}
 
 					// Incline 60
-					if (rideVehicleEntry->var_0C & 0x4){
+					if (rideVehicleEntry->available_sprites & 0x4){
 						rideVehicleEntry->var_24 = image_index;
 						b = rideVehicleEntry->var_16 * 80;
 						image_index += b;
 					}
 					// Verticle
-					if (rideVehicleEntry->var_0C & 0x8){
+					if (rideVehicleEntry->available_sprites & 0x8){
 						rideVehicleEntry->var_28 = image_index;
 						b = rideVehicleEntry->var_16 * 116;
 						image_index += b;
 					}
 					// Unknown
-					if (rideVehicleEntry->var_0C & 0x10){
+					if (rideVehicleEntry->available_sprites & 0x10){
 						rideVehicleEntry->var_2C = image_index;
 						b = rideVehicleEntry->var_16 * 24;
 						image_index += b;
 					}
 
 					// Bank
-					if (rideVehicleEntry->var_0C & 0x20){
+					if (rideVehicleEntry->available_sprites & 0x20){
 						rideVehicleEntry->var_30 = image_index;
 						b = rideVehicleEntry->var_16 * 80;
 						image_index += b;
 					}
 
-					if (rideVehicleEntry->var_0C & 0x40){
+					if (rideVehicleEntry->available_sprites & 0x40){
 						rideVehicleEntry->var_34 = image_index;
 						b = rideVehicleEntry->var_16 * 40;
 						image_index += b;
 					}
 
 					// Track half? Up/Down
-					if (rideVehicleEntry->var_0C & 0x80){
+					if (rideVehicleEntry->available_sprites & 0x80){
 						rideVehicleEntry->var_38 = image_index;
 						b = rideVehicleEntry->var_16 * 128;
 						image_index += b;
 					}
 					// Unknown
-					if (rideVehicleEntry->var_0C & 0x100){
+					if (rideVehicleEntry->available_sprites & 0x100){
 						rideVehicleEntry->var_3C = image_index;
 						b = rideVehicleEntry->var_16 * 16;
 						image_index += b;
 					}
 					// Unknown
-					if (rideVehicleEntry->var_0C & 0x200){
+					if (rideVehicleEntry->available_sprites & 0x200){
 						rideVehicleEntry->var_40 = image_index;
 						b = rideVehicleEntry->var_16 * 16;
 						image_index += b;
 					}
 
-					if (rideVehicleEntry->var_0C & 0x400){
+					if (rideVehicleEntry->available_sprites & 0x400){
 						rideVehicleEntry->var_44 = image_index;
 						b = rideVehicleEntry->var_16 * 128;
 						image_index += b;
 					}
 
-					if (rideVehicleEntry->var_0C & 0x800){
+					if (rideVehicleEntry->available_sprites & 0x800){
 						rideVehicleEntry->var_48 = image_index;
 						b = rideVehicleEntry->var_16 * 16;
 						image_index += b;
 					}
 
-					if (rideVehicleEntry->var_0C & 0x1000){
+					if (rideVehicleEntry->available_sprites & 0x1000){
 						rideVehicleEntry->var_4C = image_index;
 						b = rideVehicleEntry->var_16 * 80;
 						image_index += b;
 					}
 					// Unknown
-					if (rideVehicleEntry->var_0C & 0x2000){
+					if (rideVehicleEntry->available_sprites & 0x2000){
 						rideVehicleEntry->var_1C = image_index;
 						b = rideVehicleEntry->var_16 * 12;
 						image_index += b;
 					}
 
-					if (rideVehicleEntry->var_0C & 0x4000){
+					if (rideVehicleEntry->available_sprites & 0x4000){
 						// Same offset as above???
 						rideVehicleEntry->var_4C = image_index;
 						b = rideVehicleEntry->var_16 * 32;

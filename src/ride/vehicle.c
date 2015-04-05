@@ -681,7 +681,7 @@ static void vehicle_update_measurements(rct_vehicle *vehicle)
 
 			if (ride->type == RIDE_TYPE_WATER_COASTER){
 				if (track_elem_type >= TRACK_ELEM_FLAT_COVERED && track_elem_type <= TRACK_ELEM_RIGHT_QUARTER_TURN_3_TILES_COVERED){
-					ride->var_0D5 |= (1 << 5);
+					ride->special_track_elements |= RIDE_ELEMENT_TUNNEL_SPLASH_OR_RAPIDS;
 				}
 			}
 
@@ -689,18 +689,18 @@ static void vehicle_update_measurements(rct_vehicle *vehicle)
 			{
 			case TRACK_ELEM_RAPIDS:
 			case TRACK_ELEM_SPINNING_TUNNEL:
-				ride->var_0D5 |= (1 << 5);
+				ride->special_track_elements |= RIDE_ELEMENT_TUNNEL_SPLASH_OR_RAPIDS;
 				break;
 			case TRACK_ELEM_WATERFALL:
 			case TRACK_ELEM_LOG_FLUME_REVERSER:
-				ride->var_0D5 |= (1 << 6);
+				ride->special_track_elements |= RIDE_ELEMENT_REVERSER_OR_WATERFALL;
 				break;
 			case TRACK_ELEM_WHIRLPOOL:
-				ride->var_0D5 |= (1 << 7);
+				ride->special_track_elements |= RIDE_ELEMENT_WHIRLPOOL;
 				break;
 			case TRACK_ELEM_WATER_SPLASH:
 				if (vehicle->velocity >= 0xB0000){
-					ride->var_0D5 |= (1 << 5);
+					ride->special_track_elements |= RIDE_ELEMENT_TUNNEL_SPLASH_OR_RAPIDS;
 				}
 			}
 
@@ -854,12 +854,12 @@ static void vehicle_update_measurements(rct_vehicle *vehicle)
 			}
 
 			if (flags & (1 << 11)){
-				uint8 helixes = ride->var_0D5 & 0x1F;
+				uint8 helixes = ride_get_helix_sections(ride);
 				if (helixes != 0x1F)
 					helixes++;
 
-				ride->var_0D5 &= ~0x1F;
-				ride->var_0D5 |= helixes;
+				ride->special_track_elements &= ~0x1F;
+				ride->special_track_elements |= helixes;
 			}
 		}
 	}

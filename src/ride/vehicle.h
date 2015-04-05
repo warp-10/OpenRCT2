@@ -47,7 +47,8 @@ typedef struct {
 	sint16 sprite_bottom;			// 0x1C
 	uint8 sprite_direction;			// 0x1E
 	uint8 var_1F;
-	uint8 pad_20[0x08];
+	uint8 var_20;
+	uint8 pad_21[0x07];
 	sint32 velocity;				// 0x28
 	sint32 var_2C;
 	uint8 ride;						// 0x30

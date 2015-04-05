@@ -54,8 +54,10 @@ typedef struct {
 	uint8 vehicle_type;				// 0x31
 	uint8 pad_32[0x02];
 	uint16 var_34;
-	sint16 var_36;
-	//x related
+	// >>2 to remove rotation and have just
+	// track_elem_type
+	uint16 track_type;
+	// x related
 	uint16 var_38;
 	// y related
 	uint16 var_3A;

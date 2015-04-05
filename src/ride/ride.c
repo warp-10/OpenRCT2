@@ -1873,7 +1873,8 @@ void ride_measurement_update(rct_ride_measurement *measurement)
 	uint16 spriteIndex;
 	rct_ride *ride;
 	rct_vehicle *vehicle;
-	int unk, velocity, altitude, verticalG, lateralG;
+	int velocity, altitude, verticalG, lateralG;
+	uint16 track_elem_type;
 
 	ride = GET_RIDE(measurement->ride_index);
 	spriteIndex = ride->vehicles[measurement->vehicle_index];
@@ -1896,8 +1897,13 @@ void ride_measurement_update(rct_ride_measurement *measurement)
 		return;
 	}
 
-	unk = (vehicle->var_36 / 4) & 0xFF;
-	if (unk == 216 || unk == 123 || unk == 9 || unk == 63 || unk == 147 || unk == 155)
+	track_elem_type = (vehicle->track_type / 4) & 0xFF;
+	if (track_elem_type == 216 || 
+		track_elem_type == TRACK_ELEM_CABLE_LIFT_HILL || 
+		track_elem_type == TRACK_ELEM_25_DEG_UP_TO_FLAT ||
+		track_elem_type == TRACK_ELEM_60_DEG_UP_TO_FLAT ||
+		track_elem_type == TRACK_ELEM_DIAG_25_DEG_UP_TO_FLAT ||
+		track_elem_type == TRACK_ELEM_DIAG_60_DEG_UP_TO_FLAT)
 		if (vehicle->velocity == 0)
 			return;
 

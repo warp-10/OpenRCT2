@@ -2048,8 +2048,13 @@ static rct_string_id window_ride_get_status_vehicle(rct_window *w, void *argumen
 
 	vehicle = &(g_sprite_list[vehicleSpriteIndex].vehicle);
 	if (vehicle->status != VEHICLE_STATUS_CRASHING && vehicle->status != VEHICLE_STATUS_CRASHED) {
-		int ax = vehicle->var_36 / 4;
-		if (ax == 216 || ax == 123 || ax == 9 || ax == 63 || ax == 147 || ax == 155) {
+		int track_elem_type = vehicle->track_type / 4;
+		if (track_elem_type == 216 || 
+			track_elem_type == TRACK_ELEM_CABLE_LIFT_HILL ||
+			track_elem_type == TRACK_ELEM_25_DEG_UP_TO_FLAT ||
+			track_elem_type == TRACK_ELEM_60_DEG_UP_TO_FLAT ||
+			track_elem_type == TRACK_ELEM_DIAG_25_DEG_UP_TO_FLAT ||
+			track_elem_type == TRACK_ELEM_DIAG_60_DEG_UP_TO_FLAT) {
 			if ((RCT2_ADDRESS(0x01357644, uint32)[ride->type] & 0x40) && vehicle->velocity == 0) {
 				RCT2_GLOBAL((int)arguments + 0, uint16) = STR_STOPPED_BY_BLOCK_BRAKES;
 				return 1191;

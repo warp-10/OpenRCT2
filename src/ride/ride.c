@@ -3630,6 +3630,7 @@ void increment_turn_count_1_element(rct_ride* ride, uint8 type){
 	}
 	uint16 value = (*turn_count & TURN_MASK_1_ELEMENT) + 1;
 	*turn_count &= ~TURN_MASK_1_ELEMENT;
+
 	if (value > TURN_MASK_1_ELEMENT)
 		value = TURN_MASK_1_ELEMENT;
 	*turn_count |= value;
@@ -3650,7 +3651,7 @@ void increment_turn_count_2_elements(rct_ride* ride, uint8 type){
 	}
 	uint16 value = (*turn_count & TURN_MASK_2_ELEMENTS) + 0x20;
 	*turn_count &= ~TURN_MASK_2_ELEMENTS;
-	value <<= 5;
+
 	if (value > TURN_MASK_2_ELEMENTS)
 		value = TURN_MASK_2_ELEMENTS;
 	*turn_count |= value;
@@ -3671,7 +3672,7 @@ void increment_turn_count_3_elements(rct_ride* ride, uint8 type){
 	}
 	uint16 value = (*turn_count & TURN_MASK_3_ELEMENTS) + 0x100;
 	*turn_count &= ~TURN_MASK_3_ELEMENTS;
-	value <<= 8;
+
 	if (value > TURN_MASK_3_ELEMENTS)
 		value = TURN_MASK_3_ELEMENTS;
 	*turn_count |= value;
@@ -3691,7 +3692,7 @@ void increment_turn_count_4_plus_elements(rct_ride* ride, uint8 type){
 	}
 	uint16 value = (*turn_count & TURN_MASK_4_PLUS_ELEMENTS) + 0x800;
 	*turn_count &= ~TURN_MASK_4_PLUS_ELEMENTS;
-	value <<= 11;
+
 	if (value > TURN_MASK_4_PLUS_ELEMENTS)
 		value = TURN_MASK_4_PLUS_ELEMENTS;
 	*turn_count |= value;

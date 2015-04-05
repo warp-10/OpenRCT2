@@ -203,18 +203,19 @@ typedef struct {
 	fixed16_2dp previous_vertical_g;// 0x102
 	fixed16_2dp previous_lateral_g;	// 0x104
 	uint8 pad_106[0x2];
-	uint32 var_108;
+	uint32 testing_flags;			// 0x108
 	// x y map location
 	uint16 var_10C;
 	// Next 3 variables are related (XXXX XYYY ZZZa aaaa)
-	uint16 var_10E;
-	uint16 var_110;
-	uint16 var_112;
+	uint16 turn_count_default;		// 0x10E X = current turn count
+	uint16 turn_count_banked;		// 0x110 
+	uint16 turn_count_sloped;		// 0x112 X = number turns > 3 elements
 	union {
 		uint8 inversions;			// 0x114 (???X XXXX)
 		uint8 holes;				// 0x114 (???X XXXX)
 	};
-	uint8 drops;					// 0x115 (??XX XXXX)
+	// Y is number of powered lifts, X is drops
+	uint8 drops;					// 0x115 (YYXX XXXX)
 	uint8 start_drop_height;		// 0x116
 	uint8 highest_drop_height;		// 0x117
 	sint32 sheltered_length;		// 0x118
@@ -379,6 +380,17 @@ enum {
 	RIDE_LIFECYCLE_CABLE_LIFT = 1 << 17,
 	RIDE_LIFECYCLE_18 = 1 << 18,
 	RIDE_LIFECYCLE_SIX_FLAGS = 1 << 19
+};
+
+enum{
+	RIDE_TESTING_FLAG_0 = (1 << 0),
+	RIDE_TESTING_TURN_LEFT = (1 << 1),
+	RIDE_TESTING_TURN_RIGHT = (1 << 2),
+	RIDE_TESTING_TURN_BANKED = (1 << 3),
+	RIDE_TESTING_TURN_SLOPED = (1 << 4),
+	RIDE_TESTING_DROP_DOWN = (1 << 5),
+	RIDE_TESTING_POWERED_LIFT = (1 << 6),
+	RIDE_TESTING_DROP_UP = (1 << 7),
 };
 
 enum {
@@ -719,6 +731,12 @@ enum {
 #define STATION_DEPART_FLAG (1 << 7)
 #define STATION_DEPART_MASK (~STATION_DEPART_FLAG)
 
+#define CURRENT_TURN_COUNT_MASK 0xF800
+#define TURN_MASK_1_ELEMENT		0x001F
+#define TURN_MASK_2_ELEMENTS	0x00E0
+#define TURN_MASK_3_ELEMENTS	0x0700
+#define TURN_MASK_4_PLUS_ELEMENTS 0xF800
+
 // rct2: 0x009ACFA4
 rct_ride_type **gRideTypeList;
 
@@ -782,16 +800,14 @@ void ride_set_name(int rideIndex, const char *name);
 void game_command_set_ride_name(int *eax, int *ebx, int *ecx, int *edx, int *esi, int *edi, int *ebp);
 void game_command_set_ride_setting(int *eax, int *ebx, int *ecx, int *edx, int *esi, int *edi, int *ebp);
 
-int get_var_10E_unk_1(rct_ride* ride);
-int get_var_10E_unk_2(rct_ride* ride);
-int get_var_10E_unk_3(rct_ride* ride);
-int get_var_110_unk_1(rct_ride* ride);
-int get_var_110_unk_2(rct_ride* ride);
-int get_var_110_unk_3(rct_ride* ride);
-int get_var_112_unk_1(rct_ride* ride);
-int get_var_112_unk_2(rct_ride* ride);
-int get_var_112_unk_3(rct_ride* ride);
-int get_var_112_unk_4(rct_ride* ride);
+void increment_turn_count_1_element(rct_ride* ride, uint8 type);
+void increment_turn_count_2_elements(rct_ride* ride, uint8 type);
+void increment_turn_count_3_elements(rct_ride* ride, uint8 type);
+void increment_turn_count_4_plus_elements(rct_ride* ride, uint8 type);
+int get_turn_count_1_element(rct_ride* ride, uint8 type);
+int get_turn_count_2_elements(rct_ride* ride, uint8 type);
+int get_turn_count_3_elements(rct_ride* ride, uint8 type);
+int get_turn_count_4_plus_elements(rct_ride* ride, uint8 type);
 
 uint8 ride_get_helix_sections(rct_ride *ride);
 bool ride_has_spinning_tunnel(rct_ride *ride);

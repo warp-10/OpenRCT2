@@ -39,8 +39,13 @@ typedef struct {
 
 typedef struct {
 	uint8 type; //4
-	uint8 sequence; //5
-	uint8 colour; //6
+	union{
+		struct{
+			uint8 sequence; //5
+			uint8 colour; //6
+		};
+		uint16 maze_entry; // 5
+	};
 	uint8 ride_index; //7
 } rct_map_element_track_properties;
 
@@ -182,6 +187,10 @@ enum {
 };
 
 enum {
+	PATH_FLAG_QUEUE_BANNER = 1 << 3
+};
+
+enum {
 	ENTRANCE_TYPE_RIDE_ENTRANCE,
 	ENTRANCE_TYPE_RIDE_EXIT,
 	ENTRANCE_TYPE_PARK_ENTRANCE
@@ -206,12 +215,21 @@ enum {
 #define TILE_UNDEFINED_MAP_ELEMENT (rct_map_element*)-1
 
 typedef struct {
+	uint8 x, y;
+} rct_xy8;
+
+typedef struct {
 	sint16 x, y;
 } rct_xy16;
 
 typedef struct {
 	sint16 x, y, z;
 } rct_xyz16;
+
+typedef struct {
+	int x, y;
+	rct_map_element *element;
+} rct_xy_element;
 
 typedef struct {
 	uint16 x;
@@ -237,7 +255,6 @@ rct_map_element *map_get_surface_element_at(int x, int y);
 int map_element_height(int x, int y);
 void sub_68B089();
 int map_coord_is_connected(int x, int y, int z, uint8 faceDirection);
-void map_invalidate_animations();
 void sub_6A876D();
 int map_is_location_owned(int x, int y, int z);
 int map_is_location_in_park(int x, int y);
@@ -255,8 +272,6 @@ rct_map_element *map_element_insert(int x, int y, int z, int flags);
 int map_can_construct_with_clear_at(int x, int y, int zLow, int zHigh, void *clearFunc, uint8 bl);
 int map_can_construct_at(int x, int y, int zLow, int zHigh, uint8 bl);
 
-void fountain_update_all();
-
 void game_command_clear_scenery(int* eax, int* ebx, int* ecx, int* edx, int* esi, int* edi, int* ebp);
 void game_command_change_surface_style(int* eax, int* ebx, int* ecx, int* edx, int* esi, int* edi, int* ebp);
 
@@ -272,5 +287,8 @@ typedef struct {
 void map_element_iterator_begin(map_element_iterator *it);
 int map_element_iterator_next(map_element_iterator *it);
 void map_element_iterator_restart_for_tile(map_element_iterator *it);
+
+void map_remove_intersecting_walls(int x, int y, int z0, int z1, int direction);
+void map_update_tiles();
 
 #endif

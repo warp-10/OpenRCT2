@@ -84,10 +84,13 @@ typedef struct {
 } rct_scenario_basic;
 
 typedef struct {
-	rct_string_id scenario_name;
-	rct_string_id park_name;
-	rct_string_id details;
+	rct_string_id scenario_name;	// 0x00
+	rct_string_id park_name;		// 0x02
+	rct_string_id details;			// 0x04
+	uint8 var_06;
 } rct_stex_entry;
+
+#define g_stexEntries ((rct_stex_entry**)object_entry_groups[OBJECT_TYPE_SCENARIO_TEXT].chunks)
 
 /* This will be useful for backwards compatibility
 typedef struct {
@@ -253,8 +256,8 @@ typedef struct {
 	uint16 suggested_max_guests;
 	uint16 word_0135883E;
 	uint8 word_01358840;
-	uint8 word_01358841;
-	uint8 pad_01358842[4];
+	uint8 rct1_water_colour;
+	uint8 pad_01358842[2];
 	rct_research_item research_items[500];
 	uint16 word_01359208;
 	char scenario_name[64];
@@ -278,9 +281,9 @@ typedef struct {
 	uint16 saved_view_x;
 	uint16 saved_view_y;
 	uint16 saved_view_zoom_and_rotation;
-	uint8 byte_013886A0[6000];
+	uint8 map_animations[6000];
 	uint8 byte_01389E10[6000];
-	uint16 word_0138B580;
+	uint16 num_map_animations;
 	uint8 pad_0138B580[2];
 	uint16 word_0138B584;
 	uint16 word_0138B586;
@@ -407,6 +410,9 @@ void scenario_update();
 unsigned int scenario_rand();
 int scenario_prepare_for_save();
 int scenario_save(char *path, int flags);
+void scenario_set_filename(const char *value);
+void scenario_failure();
+void scenario_success();
 void scenario_success_submit_name(const char *name);
 
 #endif

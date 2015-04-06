@@ -174,8 +174,8 @@ typedef struct {
 	uint16 view_y;
 	uint8 view_zoom;
 	uint8 view_rotation;
-	uint8 animated_objects[6000];
-	uint32 num_animated_objects;
+	uint8 map_animations[6000];
+	uint32 num_map_animations;
 	uint8 unk_1CADBC[12];
 	uint16 scrolling_text_step;
 	uint32 unk_1CADCA;
@@ -342,6 +342,11 @@ typedef struct{
 	uint8 pad_41[0x83];
 	uint16 start_track_data_AA_CF;					// 0xC4
 }rct_track_td4; // Information based off RCTTechDepot
+
+bool rct1_read_sc4(const char *path, rct1_s4 *s4);
+bool rct1_read_sv4(const char *path, rct1_s4 *s4);
+void rct1_import_s4(rct1_s4 *s4);
+void rct1_fix_landscape();
 
 #endif
  

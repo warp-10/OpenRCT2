@@ -94,24 +94,6 @@ static void* window_track_list_events[] = {
 
 ride_list_item _window_track_list_item;
 
-void window_track_list_format_name(char *dst, const char *src, char colour, char quotes)
-{
-	if (colour != 0)
-		*dst++ = colour;
-
-	if (quotes != 0)
-		*dst++ = FORMAT_OPENQUOTES;
-
-	while (*src != '.' && *src != 0) {
-		*dst++ = *src++;
-	}
-
-	if (quotes != 0)
-		*dst++ = FORMAT_ENDQUOTES;
-
-	*dst = 0;
-}
-
 /**
  *
  *  rct2: 0x006CF1A2
@@ -520,7 +502,7 @@ static void window_track_list_paint()
 		y += 10;
 	}
 
-	if (RCT2_GLOBAL(RCT2_ADDRESS_RIDE_FLAGS + (track_td6->type * 8), uint32) & 0x80) {
+	if (ride_type_has_flag(track_td6->type, RIDE_TYPE_FLAG_HAS_G_FORCES)) {
 		// Maximum positive vertical Gs
 		gForces = track_td6->max_positive_vertical_g * 32;
 		gfx_draw_string_left(dpi, STR_MAX_POSITIVE_VERTICAL_G, &gForces, 0, x, y);
@@ -546,7 +528,7 @@ static void window_track_list_paint()
 		}
 	}
 	
-	if (RCT2_GLOBAL(RCT2_ADDRESS_RIDE_FLAGS + (track_td6->type * 8), uint32) & 0x400) {
+	if (ride_type_has_flag(track_td6->type, RIDE_TYPE_FLAG_HAS_DROPS)) {
 		// Drops
 		drops = track_td6->drops & 0x3F;
 		gfx_draw_string_left(dpi, STR_DROPS, &drops, 0, x, y);

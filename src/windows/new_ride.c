@@ -22,6 +22,7 @@
 #include "../audio/audio.h"
 #include "../game.h"
 #include "../management/news_item.h"
+#include "../management/research.h"
 #include "../ride/ride.h"
 #include "../localisation/localisation.h"
 #include "../world/scenery.h"
@@ -325,7 +326,7 @@ static void window_new_ride_populate_list()
 					nextListItem->entry_index = rideEntryIndex;
 					nextListItem++;
 				} else if (dh & 4) {
-					if (rideType == rideEntry->var_00C) {
+					if (rideType == rideEntry->ride_type[0]) {
 						nextListItem--;
 						nextListItem->type = rideType;
 						nextListItem->entry_index = rideEntryIndex;
@@ -381,13 +382,13 @@ static void window_new_ride_scroll_to_focused_ride(rct_window *w)
  *
  *  rct2: 0x006B3CFF
  */
-void window_new_ride_open()
+rct_window *window_new_ride_open()
 {
 	rct_window *w;
 
 	w = window_bring_to_front_by_class(WC_CONSTRUCT_RIDE);
 	if (w != NULL)
-		return;
+		return w;
 
 	// Not sure what these windows are
 	window_close_by_class(WC_TRACK_DESIGN_LIST);
@@ -426,6 +427,17 @@ void window_new_ride_open()
 	w->width = 1;
 	window_new_ride_refresh_widget_sizing(w);
 	window_new_ride_scroll_to_focused_ride(w);
+
+	return w;
+}
+
+rct_window *window_new_ride_open_research()
+{
+	rct_window *w;
+	
+	w = window_new_ride_open();
+	window_new_ride_set_page(w, WINDOW_NEW_RIDE_PAGE_RESEARCH);
+	return w;
 }
 
 /**
@@ -446,7 +458,7 @@ void window_new_ride_focus(ride_list_item rideItem)
 
 	ride_list_item *listItem = (ride_list_item*)0x00F43523;
 	while (listItem->type != RIDE_TYPE_NULL) {
-		if (listItem->type == rideItem.type && listItem->entry_index == rideItem.type) {
+		if (listItem->type == rideItem.type && listItem->entry_index == rideItem.entry_index) {
 			RCT2_GLOBAL(0x00F43825, uint8) = rideItem.type;
 			RCT2_GLOBAL(0x00F43826, uint8) = rideItem.entry_index;
 			w->new_ride.highlighted_ride_id = (rideItem.entry_index << 8) | rideItem.type;
@@ -759,43 +771,58 @@ static void window_new_ride_paint()
 
 	int x = w->x + 10;
 	int y = w->y + window_new_ride_widgets[WIDX_CURRENTLY_IN_DEVELOPMENT_GROUP].top + 12;
+	rct_string_id stringId;
 
-	// Research type
-	rct_string_id stringId = STR_RESEARCH_UNKNOWN;
-	if (RCT2_GLOBAL(0x01357CF3, uint8) != 0) {
-		stringId = STR_TRANSPORT_RIDE + RCT2_GLOBAL(RCT2_ADDRESS_NEXT_RESEARCH_CATEGORY, uint8);
-		if (RCT2_GLOBAL(0x01357CF3, uint8) != 1) {
-			uint32 typeId = RCT2_GLOBAL(RCT2_ADDRESS_NEXT_RESEARCH_ITEM, uint32);
-			if (typeId >= 0x10000) {
-				rct_ride_type *rideEntry = RCT2_GLOBAL(0x009ACFA4 + (typeId & 0xFF) * 4, rct_ride_type*);
-				stringId = rideEntry->var_008 & 0x1000 ?
-					rideEntry->name :
-					(typeId & 0xFF00) + 2;
-			} else {
-				stringId = g_scenerySetEntries[typeId]->name;
+	if (RCT2_GLOBAL(RCT2_ADDRESS_RESEARH_PROGRESS_STAGE, uint8) == RESEARCH_STAGE_FINISHED_ALL){
+		stringId = STR_RESEARCH_UNKNOWN;
+		gfx_draw_string_left_wrapped(dpi, &stringId, x, y, 296, STR_RESEARCH_TYPE_LABEL, 0);
+		y += 25;
+		// Progress
+		stringId = 2680;
+		gfx_draw_string_left_wrapped(dpi, &stringId, x, y, 296, STR_RESEARCH_PROGRESS_LABEL, 0);
+		y += 15;
+
+		RCT2_GLOBAL(0x013CE952, uint16) = STR_UNKNOWN;
+		gfx_draw_string_left(dpi, STR_RESEARCH_EXPECTED_LABEL, (void*)0x013CE952, 0, x, y);
+	}
+	else{
+		// Research type
+		stringId = STR_RESEARCH_UNKNOWN;
+		if (RCT2_GLOBAL(0x01357CF3, uint8) != 0) {
+			stringId = STR_TRANSPORT_RIDE + RCT2_GLOBAL(RCT2_ADDRESS_NEXT_RESEARCH_CATEGORY, uint8);
+			if (RCT2_GLOBAL(0x01357CF3, uint8) != 1) {
+				uint32 typeId = RCT2_GLOBAL(RCT2_ADDRESS_NEXT_RESEARCH_ITEM, uint32);
+				if (typeId >= 0x10000) {
+					rct_ride_type *rideEntry = RCT2_GLOBAL(0x009ACFA4 + (typeId & 0xFF) * 4, rct_ride_type*);
+					stringId = rideEntry->var_008 & 0x1000 ?
+						rideEntry->name :
+						(typeId & 0xFF00) + 2;
+				}
+				else {
+					stringId = g_scenerySetEntries[typeId]->name;
+				}
 			}
 		}
-	}
-	gfx_draw_string_left_wrapped(dpi, &stringId, x, y, 296, STR_RESEARCH_TYPE_LABEL, 0);
-	y += 25;
+		gfx_draw_string_left_wrapped(dpi, &stringId, x, y, 296, STR_RESEARCH_TYPE_LABEL, 0);
+		y += 25;
 
-	// Progress
-	stringId = 2285 + RCT2_GLOBAL(0x01357CF3, uint8);
-	gfx_draw_string_left_wrapped(dpi, &stringId, x, y, 296, STR_RESEARCH_PROGRESS_LABEL, 0);
-	y += 15;
+		// Progress
+		stringId = 2285 + RCT2_GLOBAL(0x01357CF3, uint8);
+		gfx_draw_string_left_wrapped(dpi, &stringId, x, y, 296, STR_RESEARCH_PROGRESS_LABEL, 0);
+		y += 15;
 
-	// Expected
-	RCT2_GLOBAL(0x013CE952, uint16) = STR_UNKNOWN;
-	if (RCT2_GLOBAL(0x01357CF3, uint8) != 0) {
-		uint16 expectedDay = RCT2_GLOBAL(RCT2_ADDRESS_NEXT_RESEARCH_EXPECTED_DAY, uint8);
-		if (expectedDay != 255) {
-			RCT2_GLOBAL(0x013CE952 + 2, uint16) = STR_DATE_DAY_1 + expectedDay;
-			RCT2_GLOBAL(0x013CE952 + 4, uint16) = STR_MONTH_MARCH + RCT2_GLOBAL(RCT2_ADDRESS_NEXT_RESEARCH_EXPECTED_MONTH, uint8);
-			RCT2_GLOBAL(0x013CE952, uint16) = 2289;
+		// Expected
+		RCT2_GLOBAL(0x013CE952, uint16) = STR_UNKNOWN;
+		if (RCT2_GLOBAL(0x01357CF3, uint8) != 0) {
+			uint16 expectedDay = RCT2_GLOBAL(RCT2_ADDRESS_NEXT_RESEARCH_EXPECTED_DAY, uint8);
+			if (expectedDay != 255) {
+				RCT2_GLOBAL(0x013CE952 + 2, uint16) = STR_DATE_DAY_1 + expectedDay;
+				RCT2_GLOBAL(0x013CE952 + 4, uint16) = STR_MONTH_MARCH + RCT2_GLOBAL(RCT2_ADDRESS_NEXT_RESEARCH_EXPECTED_MONTH, uint8);
+				RCT2_GLOBAL(0x013CE952, uint16) = 2289;
+			}
 		}
+		gfx_draw_string_left(dpi, STR_RESEARCH_EXPECTED_LABEL, (void*)0x013CE952, 0, x, y);
 	}
-	gfx_draw_string_left(dpi, STR_RESEARCH_EXPECTED_LABEL, (void*)0x013CE952, 0, x, y);
-
 	// Last development
 	x = w->x + 10;
 	y = w->y + window_new_ride_widgets[WIDX_LAST_DEVELOPMENT_GROUP].top + 12;
@@ -849,13 +876,13 @@ static void window_new_ride_scrollpaint()
 		
 		// Draw ride image
 		rideEntry = rideEntries[listItem->entry_index];
-		int unk = rideEntry->var_004;
-		if (listItem->type != rideEntry->var_00C) {
-			unk++;
-			if (listItem->type != rideEntry->var_00D)
-				unk++;
+		int image_id = rideEntry->images_offset;
+		if (listItem->type != rideEntry->ride_type[0]) {
+			image_id++;
+			if (listItem->type != rideEntry->ride_type[1])
+				image_id++;
 		}
-		RCT2_CALLPROC_X(0x00681DE2, 0, 29013, x + 2, y + 2, 0xA0, (int)dpi, unk);
+		RCT2_CALLPROC_X(0x00681DE2, 0, 29013, x + 2, y + 2, 0xA0, (int)dpi, image_id);
 
 		// Next position
 		x += 116;
@@ -934,8 +961,7 @@ static void window_new_ride_paint_ride_information(rct_window *w, rct_drawpixeli
 	gfx_draw_string_left_wrapped(dpi, (void*)0x013CE952, x, y, width, 1690, 0);
 
 	// Number of designs available
-	uint32 rideTypeFlags = RCT2_GLOBAL(RCT2_ADDRESS_RIDE_FLAGS + (item.type * 8), uint32);
-	if (rideTypeFlags & 0x10000000) {
+	if (ride_type_has_flag(item.type, RIDE_TYPE_FLAG_HAS_TRACK)) {
 		if (item.type != _lastTrackDesignCountRideType.type || item.entry_index != _lastTrackDesignCountRideType.entry_index) {
 			_lastTrackDesignCountRideType = item;
 			_lastTrackDesignCount = get_num_track_designs(item);
@@ -961,7 +987,7 @@ static void window_new_ride_paint_ride_information(rct_window *w, rct_drawpixeli
 		// Get price of ride
 		int unk2 = RCT2_GLOBAL(0x0097CC68 + (item.type * 2), uint8);
 		money32 price = RCT2_GLOBAL(0x0097DD78 + (item.type * 4), uint16);
-		if (rideTypeFlags & 0x80000) {
+		if (ride_type_has_flag(item.type, RIDE_TYPE_FLAG_SELLS_FOOD)) {
 			price *= RCT2_ADDRESS(0x0099DE34, uint32)[unk2];
 		} else {
 			price *= RCT2_ADDRESS(0x0099DA34, uint32)[unk2];
@@ -970,7 +996,7 @@ static void window_new_ride_paint_ride_information(rct_window *w, rct_drawpixeli
 
 		// 
 		rct_string_id stringId = 1691;
-		if (!(rideTypeFlags & 0x8000))
+		if (!ride_type_has_flag(item.type, RIDE_TYPE_FLAG_15))
 			stringId++;
 
 		gfx_draw_string_right(dpi, stringId, &price, 0, x + width, y + 40);
@@ -989,8 +1015,7 @@ static void window_new_ride_select(rct_window *w)
 
 	window_close(w);
 
-	uint32 rideTypeFlags = RCT2_GLOBAL(RCT2_ADDRESS_RIDE_FLAGS + (item.type * 8), uint32);
-	if (rideTypeFlags & 0x10000000) {
+	if (ride_type_has_flag(item.type, RIDE_TYPE_FLAG_HAS_TRACK)) {
 		track_load_list(item);
 
 		uint8 *trackDesignList = (uint8*)0x00F441EC;

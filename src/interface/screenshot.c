@@ -25,7 +25,6 @@
 #include "../drawing/drawing.h"
 #include "../game.h"
 #include "../localisation/localisation.h"
-#include "../platform/osinterface.h"
 #include "../platform/platform.h"
 #include "../windows/error.h"
 #include "screenshot.h"
@@ -51,7 +50,7 @@ void screenshot_check()
 
 			if (screenshotIndex != -1) {
 				char *lang_3165 = (char*)0x009BC677;
-				sprintf(lang_3165, "SCR%d%s", screenshotIndex, _screenshot_format_extension[gGeneral_config.screenshot_format]);
+				sprintf(lang_3165, "SCR%d%s", screenshotIndex, _screenshot_format_extension[gConfigGeneral.screenshot_format]);
 
 				RCT2_GLOBAL(0x013CE952, uint16) = 3165;
 				// RCT2_GLOBAL(0x013CE952, uint16) = STR_SCR_BMP;
@@ -71,10 +70,10 @@ void screenshot_check()
 
 static int screenshot_get_next_path(char *path, int format)
 {
-	char *screenshotPath = osinterface_get_orct2_homesubfolder("screenshot");
-	if (!platform_ensure_directory_exists(screenshotPath)) {
-		free(screenshotPath);
+	char screenshotPath[MAX_PATH];
 
+	platform_get_user_directory(screenshotPath, "screenshot");
+	if (!platform_ensure_directory_exists(screenshotPath)) {
 		fprintf(stderr, "Unable to save screenshots in OpenRCT2 screenshot directory.\n");
 		return -1;
 	}
@@ -84,20 +83,20 @@ static int screenshot_get_next_path(char *path, int format)
 		RCT2_GLOBAL(0x013CE952, uint16) = i;
 
 		// Glue together path and filename
-		sprintf(path, "%s%cSCR%d%s", screenshotPath, osinterface_get_path_separator(), i, _screenshot_format_extension[format]);
+		sprintf(path, "%sSCR%d%s", screenshotPath, i, _screenshot_format_extension[format]);
 
 		if (!platform_file_exists(path)) {
 			return i;
 		}
 	}
 
-	free(screenshotPath);
+	fprintf(stderr, "You have too many saved screenshots.\n");
 	return -1;
 }
 
 int screenshot_dump()
 {
-	switch (gGeneral_config.screenshot_format) {
+	switch (gConfigGeneral.screenshot_format) {
 	case SCREENSHOT_FORMAT_BMP:
 		return screenshot_dump_bmp();
 	case SCREENSHOT_FORMAT_PNG:

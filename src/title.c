@@ -37,6 +37,7 @@
 #include "world/climate.h"
 #include "world/map.h"
 #include "world/park.h"
+#include "world/scenery.h"
 #include "world/sprite.h"
 
 static const int gOldMusic = 0;
@@ -93,7 +94,7 @@ void title_load()
 	log_verbose("loading title");
 
 	if (RCT2_GLOBAL(RCT2_ADDRESS_GAME_PAUSED, uint8) & 1)
-		RCT2_CALLPROC_X(0x00667C15, 0, 1, 0, 0, 0, 0, 0);//Game pause toggle
+		pause_toggle();
 
 	RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) = SCREEN_FLAGS_TITLE_DEMO;
 
@@ -102,17 +103,17 @@ void title_load()
 	reset_sprite_list();
 	ride_init_all();
 	window_guest_list_init_vars_a();
-	sub_6BD3A4(); // RCT2_CALLPROC_EBPSAFE(0x006BD3A4);
+	sub_6BD3A4();
 	map_init(150);
 	park_init();
 	date_reset();
 	climate_reset(CLIMATE_COOL_AND_WET);
-	RCT2_CALLPROC_EBPSAFE(0x006DFEE4);
+	scenery_set_default_placement_configuration();
 	window_new_ride_init_vars();
 	window_guest_list_init_vars_b();
 	window_staff_list_init_vars();
-	map_update_tile_pointers(); //RCT2_CALLPROC_EBPSAFE(0x0068AFFD);
-	reset_0x69EBE4();// RCT2_CALLPROC_EBPSAFE(0x0069EBE4);
+	map_update_tile_pointers();
+	reset_0x69EBE4();
 	viewport_init_all();
 	news_item_init_queue();
 	title_create_windows();
@@ -130,13 +131,12 @@ void title_load()
  */
 static void title_create_windows()
 {
-	// RCT2_CALLPROC_EBPSAFE(0x0066B3E8);
-
 	window_main_open();
 	window_title_menu_open();
 	window_title_exit_open();
+	window_title_options_open();
 	window_title_logo_open();
-	RCT2_CALLPROC_EBPSAFE(0x0066B905);
+	window_resize_gui(RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_WIDTH, sint16), RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_HEIGHT, sint16));
 }
 
 /**
@@ -205,7 +205,7 @@ static void title_update_showcase()
 				sub_69E9A7();
 				window_new_ride_init_vars();
 				sub_684AC3();
-				RCT2_CALLPROC_EBPSAFE(0x006DFEE4);
+				scenery_set_default_placement_configuration();
 				news_item_init_queue();
 				gfx_invalidate_screen();
 				RCT2_GLOBAL(0x009DEA66, sint16) = 0;
@@ -265,8 +265,6 @@ static void DrawOpenRCT2(int x, int y)
 void game_handle_input();
 void title_update()
 {
-	int tmp;
-
 	screenshot_check();
 	title_handle_keyboard_input();
 
@@ -277,17 +275,6 @@ void title_update()
 	}
 
 	RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) &= ~0x80;
-	RCT2_GLOBAL(0x009AC861, uint16) &= ~0x8000;
-	RCT2_GLOBAL(0x009AC861, uint16) &= ~0x02;
-	tmp = RCT2_GLOBAL(0x009AC861, uint16) & 0x01;
-	RCT2_GLOBAL(0x009AC861, uint16) &= ~0x01;
-	if (!tmp)
-		RCT2_GLOBAL(0x009AC861, uint16) |= 0x02;
-	RCT2_GLOBAL(0x009AC861, uint16) &= ~0x08;
-	tmp = RCT2_GLOBAL(0x009AC861, uint16) & 0x04;
-	RCT2_GLOBAL(0x009AC861, uint16) &= ~0x04;
-	if (!tmp)
-		RCT2_GLOBAL(0x009AC861, uint16) |= 0x04;
 
 	window_map_tooltip_update_visibility();
 	window_update_all();
@@ -306,7 +293,7 @@ void title_update()
 	if (RCT2_GLOBAL(0x009AAC73, uint8) != 255) {
 		RCT2_GLOBAL(0x009AAC73, uint8)++;
 		if (RCT2_GLOBAL(0x009AAC73, uint8) == 255)
-			config_save();
+			config_save_default();
 	}
 }
 

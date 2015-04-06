@@ -111,9 +111,7 @@ void window_scenarioselect_open()
 	// Load scenario list
 	scenario_load_list();
 
-	window = window_create(
-		(RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_WIDTH, sint16) / 2) - 305,
-		max(28, (RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_HEIGHT, sint16) / 2) - 167),
+	window = window_create_centred(
 		610,
 		334,
 		(uint32*)window_scenarioselect_events,
@@ -184,8 +182,8 @@ static void window_scenarioselect_mousedown(int widgetIndex, rct_window*w, rct_w
 		w->selected_tab = widgetIndex - 4;
 		w->var_494 = 0;
 		window_invalidate(w);
-		RCT2_CALLPROC_X(w->event_handlers[WE_RESIZE], 0, 0, 0, 0, (int)w, 0, 0);
-		RCT2_CALLPROC_X(w->event_handlers[WE_INVALIDATE], 0, 0, 0, 0, (int)w, 0, 0);
+		window_event_resize_call(w);
+		window_event_invalidate_call(w);
 		window_init_scroll_widgets(w);
 		window_invalidate(w);
 	}

@@ -61,13 +61,15 @@ void news_item_update_current()
 
 	ax = RCT2_GLOBAL(RCT2_ADDRESS_OS_TIME_DAY, sint16);
 	bx = RCT2_GLOBAL(RCT2_ADDRESS_OS_TIME_MONTH, sint16);
+
+	// Cheat detection
 	if (bx != RCT2_GLOBAL(0x009DEA6B, sint16)) {
 		bx--;
 		if (bx == 0)
 			bx = 12;
-		if (bx != RCT2_GLOBAL(0x009DEA6B, sint16) || ax == 1) {
+		if (bx != RCT2_GLOBAL(0x009DEA6B, sint16) || ax != 1) {
 			// loc_66E2AE
-			RCT2_GLOBAL(0x013573DC, sint32) = 10000;
+			RCT2_GLOBAL(0x013573DC, sint32) -= 10000;
 			if (RCT2_GLOBAL(0x013573DC, sint32) >= 0)
 				RCT2_GLOBAL(0x013573DC, sint32) = -RCT2_GLOBAL(0x013573DC, sint32);
 		}
@@ -76,7 +78,7 @@ void news_item_update_current()
 			ax--;
 			if (ax != RCT2_GLOBAL(0x009DEA69, sint16)) {
 				// loc_66E2AE
-				RCT2_GLOBAL(0x013573DC, sint32) = 10000;
+				RCT2_GLOBAL(0x013573DC, sint32) -= 10000;
 				if (RCT2_GLOBAL(0x013573DC, sint32) >= 0)
 					RCT2_GLOBAL(0x013573DC, sint32) = -RCT2_GLOBAL(0x013573DC, sint32);
 			}
@@ -318,20 +320,21 @@ void news_item_open_subject(int type, int subject)
 			window = window_find_by_class(WC_TOP_TOOLBAR);
 			if (window != NULL) {
 				window_invalidate(window);
-				if (tool_set(window, 9, 0)){
-					RCT2_CALLPROC_X(0x006E1172, (subject & 0xFFFF), 0, subject, 0, 0, 0, 0);
+				if (!tool_set(window, 9, 0)) {
+					RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) |= INPUT_FLAG_6;
+					window_scenery_open();
 				}
-				RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) |= INPUT_FLAG_6;
-				window_scenery_open();
 			}
 		}
 		
 		// Switch to new scenery tab
-		RCT2_CALLPROC_X(0x006E1172, (subject & 0xFFFF), 0, subject, 0, 0, 0, 0);
+		window = window_find_by_class(WC_SCENERY);
+		if (window != NULL)
+			window_event_mouse_down_call(window, 4 + subject);
 		break;
 	case NEWS_ITEM_PEEPS:
 		// Open guest list to right tab
-		RCT2_CALLPROC_X(0x006993BA, 3, subject, 0, 0, 0, 0, 0);
+		window_guest_list_open_with_filter(3, subject);;
 		break;
 	case NEWS_ITEM_AWARD:
 		window_park_awards_open();

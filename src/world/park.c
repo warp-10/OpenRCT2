@@ -203,15 +203,13 @@ int calculate_park_rating()
 	// Rides
 	{
 		int i;
-		short _ax, total_ride_intensity = 0, total_ride_excitement = 0, average_intensity, average_excitement;
+		short total_ride_uptime = 0, total_ride_intensity = 0, total_ride_excitement = 0, average_intensity, average_excitement;
 		int num_rides, num_exciting_rides = 0;
 		rct_ride* ride;
 
-		// 
-		_ax = 0;
 		num_rides = 0;
 		FOR_ALL_RIDES(i, ride) {
-			_ax += 100 - ride->var_199;
+			total_ride_uptime += 100 - ride->downtime;
 
 			if (ride->excitement != -1){
 				total_ride_excitement += ride->excitement / 8;
@@ -222,7 +220,7 @@ int calculate_park_rating()
 		}
 		result -= 200;
 		if (num_rides > 0)
-			result += (_ax / num_rides) * 2;
+			result += (total_ride_uptime / num_rides) * 2;
 
 		result -= 100;
 
@@ -276,11 +274,11 @@ money32 calculate_ride_value(rct_ride *ride)
 {
 	if (ride->type == RIDE_TYPE_NULL)
 		return 0;
-	if (ride->reliability == 0xFFFF)
+	if (ride->value == RIDE_VALUE_UNDEFINED)
 		return 0;
 
-	// Reliability * (...)
-	return (ride->reliability * 10) * (
+	// Fair value * (...)
+	return (ride->value * 10) * (
 		ride->var_124 + ride->var_126 + ride->var_128 + ride->var_12A +
 		ride->var_12C + ride->var_12E + ride->age + ride->running_cost +
 		ride->var_134 + ride->var_136 +
@@ -369,8 +367,8 @@ static int park_calculate_guest_generation_probability()
 		suggestedMaxGuests += RCT2_GLOBAL(0x0097D21E + (ride->type * 8), uint8);
 
 		// Add ride value
-		if (ride->reliability != RIDE_RELIABILITY_UNDEFINED) {
-			int rideValue = ride->reliability - ride->price;
+		if (ride->value != RIDE_VALUE_UNDEFINED) {
+			int rideValue = ride->value - ride->price;
 			if (rideValue > 0)
 				totalRideValue += rideValue * 2;
 		}
@@ -385,9 +383,9 @@ static int park_calculate_guest_generation_probability()
 			if (ride->lifecycle_flags & RIDE_LIFECYCLE_CRASHED)
 				continue;
 
-			if (!(RCT2_GLOBAL(RCT2_ADDRESS_RIDE_FLAGS + (ride->type * 8), uint32) & 0x10000000))
+			if (!ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_HAS_TRACK))
 				continue;
-			if (!(RCT2_GLOBAL(RCT2_ADDRESS_RIDE_FLAGS + (ride->type * 8), uint32) & 0x200))
+			if (!ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_HAS_DATA_LOGGING))
 				continue;
 			if (!(ride->lifecycle_flags & RIDE_LIFECYCLE_TESTED))
 				continue;
@@ -712,6 +710,11 @@ void game_command_remove_park_entrance(int *eax, int *ebx, int *ecx, int *edx, i
 	}
 
 	entranceIndex = park_get_entrance_index(x, y, z);
+	if (entranceIndex == -1) {
+		*ebx = 0;
+		return;
+	}
+
 	RCT2_ADDRESS(RCT2_ADDRESS_PARK_ENTRANCE_X, uint16)[entranceIndex] = 0x8000;
 	direction = (RCT2_ADDRESS(RCT2_ADDRESS_PARK_ENTRANCE_DIRECTION, uint8)[entranceIndex] - 1) & 3;
 	z = (*edx & 0xFF) * 2;

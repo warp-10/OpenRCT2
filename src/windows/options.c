@@ -35,8 +35,8 @@
 #include "../interface/widget.h"
 #include "../interface/window.h"
 #include "../localisation/localisation.h"
+#include "../platform/platform.h"
 #include "../sprites.h"
-#include "../platform/osinterface.h"
 #include "dropdown.h"
 #include "error.h"
 
@@ -82,20 +82,22 @@ enum WINDOW_OPTIONS_WIDGET_IDX {
 
 	WIDX_SOUND,
 	WIDX_SOUND_DROPDOWN,
-	WIDX_MUSIC,
-	WIDX_MUSIC_DROPDOWN,
-	WIDX_SOUND_QUALITY,
-	WIDX_SOUND_QUALITY_DROPDOWN,
-	WIDX_SOUND_SW_BUFFER_CHECKBOX,
-	WIDX_SOUND_PAUSED_CHECKBOX,
+	WIDX_SOUND_CHECKBOX,
+	WIDX_MUSIC_CHECKBOX,
 	WIDX_TITLE_MUSIC,
 	WIDX_TITLE_MUSIC_DROPDOWN,
 
 	WIDX_SCREEN_EDGE_SCROLLING,
 	WIDX_HOTKEY_DROPDOWN,
+	WIDX_TOOLBAR_SHOW_FINANCES,
+	WIDX_TOOLBAR_SHOW_RESEARCH,
 
 	WIDX_REAL_NAME_CHECKBOX,
 	WIDX_SAVE_PLUGIN_DATA_CHECKBOX,
+	WIDX_AUTOSAVE,
+	WIDX_AUTOSAVE_DROPDOWN,
+	WIDX_ALLOW_SUBTYPE_SWITCHING,
+	WINDOW_OPTIONS_WIDGETS_SIZE // Marks the end of the widget list, leave as last item
 };
 
 #define WW 310
@@ -137,22 +139,23 @@ static rct_widget window_options_widgets[] = {
 	// Audio tab
 	{ WWT_DROPDOWN,			0,	10,		299,	53,		64,		865,			STR_NONE },	// sound
 	{ WWT_DROPDOWN_BUTTON,	0,	288,	298,	54,		63,		876,			STR_NONE },
-	{ WWT_DROPDOWN,			0,	155,	299,	68,		79,		869,			STR_NONE },	// music
-	{ WWT_DROPDOWN_BUTTON,	0,	288,	298,	69,		78,		876,			STR_NONE },
-	{ WWT_DROPDOWN,			0,	155,	299,	83,		94,		870,			STR_NONE },	// sound quality
-	{ WWT_DROPDOWN_BUTTON,	0,	288,	298,	84,		93,		876,			STR_NONE },
-	{ WWT_CHECKBOX,			0,	10,		299,	99,		110,	STR_SOUND_FORCED_SOFTWARE_BUFFER_MIXING, STR_SOUND_FORCED_SOFTWARE_BUFFER_MIXING_TIP },
-	{ WWT_CHECKBOX,			0,	10,		229,	114,	125,	STR_SOUND,		STR_NONE }, // enable/disable sound
-	{ WWT_DROPDOWN,			0,	155,	299,	130,	141,	STR_NONE,		STR_NONE },	// title music
-	{ WWT_DROPDOWN_BUTTON,	0,	288,	298,	131,	140,	876,			STR_NONE },
+	{ WWT_CHECKBOX,			0,	10,		229,	68,		79,		STR_SOUND,		STR_NONE }, // enable / disable sound
+	{ WWT_CHECKBOX,			0,	10,		229,	83,		94,		STR_MUSIC,		STR_NONE }, // enable / disable music
+	{ WWT_DROPDOWN,			0,	155,	299,	98,		109,	STR_NONE,		STR_NONE },	// title music
+	{ WWT_DROPDOWN_BUTTON,	0,	288,	298,	99,		108,	876,			STR_NONE },
 
 	// Controls tab
 	{ WWT_CHECKBOX,			2,	10,		299,	53,		64,		STR_SCREEN_EDGE_SCROLLING, STR_SCREEN_EDGE_SCROLLING_TIP },
 	{ WWT_DROPDOWN_BUTTON,	0,	26,		185,	68,		78,		STR_HOTKEY,		STR_HOTKEY_TIP },
+	{ WWT_CHECKBOX,			2,	10,		299,	82,		93,		5120,			STR_NONE },
+	{ WWT_CHECKBOX,			2,	10,		299,	97,		108,	5121,			STR_NONE },
 
 	// Misc
 	{ WWT_CHECKBOX,			2,	10,		299,	53,		64,		STR_REAL_NAME,	STR_REAL_NAME_TIP },
 	{ WWT_CHECKBOX,			2,	10,		299,	68,		79,		STR_SAVE_PLUGIN_DATA, STR_SAVE_PLUGIN_DATA_TIP },
+	{ WWT_DROPDOWN,			0,	155,	299,	83,		94,		STR_NONE,		STR_NONE },
+	{ WWT_DROPDOWN_BUTTON,	0,	288,	298,	84,		93,		876,			STR_NONE },
+	{ WWT_CHECKBOX,			2,	10,		299,	98,		109,	5122,			STR_NONE }, // allow subtype switching
 	{ WIDGETS_END },
 };
 
@@ -218,7 +221,7 @@ void window_options_open()
 	if (w != NULL)
 		return;
 
-	w = window_create_auto_pos(WW, WH, (uint32*)window_options_events, WC_OPTIONS, 0);
+	w = window_create_centred(WW, WH, (uint32*)window_options_events, WC_OPTIONS, 0);
 	w->widgets = window_options_widgets;
 	w->enabled_widgets =
 		(1ULL << WIDX_CLOSE) |
@@ -229,10 +232,8 @@ void window_options_open()
 		(1ULL << WIDX_TAB_5) |
 		(1ULL << WIDX_SOUND) |
 		(1ULL << WIDX_SOUND_DROPDOWN) |
-		(1ULL << WIDX_MUSIC) |
-		(1ULL << WIDX_MUSIC_DROPDOWN) |
-		(1ULL << WIDX_SOUND_QUALITY) |
-		(1ULL << WIDX_SOUND_QUALITY_DROPDOWN) |
+		(1ULL << WIDX_SOUND_CHECKBOX) |
+		(1ULL << WIDX_MUSIC_CHECKBOX) |
 		(1ULL << WIDX_TITLE_MUSIC) |
 		(1ULL << WIDX_TITLE_MUSIC_DROPDOWN) |
 		(1ULL << WIDX_LANGUAGE) |
@@ -249,6 +250,8 @@ void window_options_open()
 		(1ULL << WIDX_TEMPERATURE_DROPDOWN) |
 		(1ULL << WIDX_HOTKEY_DROPDOWN) |
 		(1ULL << WIDX_SCREEN_EDGE_SCROLLING) |
+		(1ULL << WIDX_TOOLBAR_SHOW_FINANCES) |
+		(1ULL << WIDX_TOOLBAR_SHOW_RESEARCH) |
 		(1ULL << WIDX_REAL_NAME_CHECKBOX) |
 		(1ULL << WIDX_CONSTRUCTION_MARKER) |
 		(1ULL << WIDX_CONSTRUCTION_MARKER_DROPDOWN) |
@@ -256,9 +259,10 @@ void window_options_open()
 		(1ULL << WIDX_HEIGHT_LABELS_DROPDOWN) |
 		(1ULL << WIDX_TILE_SMOOTHING_CHECKBOX) |
 		(1ULL << WIDX_GRIDLINES_CHECKBOX) |
-		(1ULL << WIDX_SOUND_SW_BUFFER_CHECKBOX) |
-		(1ULL << WIDX_SOUND_PAUSED_CHECKBOX) |
-		(1ULL << WIDX_SAVE_PLUGIN_DATA_CHECKBOX);	// doesn't seem to work?
+		(1ULL << WIDX_SAVE_PLUGIN_DATA_CHECKBOX) |
+		(1ULL << WIDX_AUTOSAVE) |
+		(1ULL << WIDX_AUTOSAVE_DROPDOWN) |
+		(1ULL << WIDX_ALLOW_SUBTYPE_SWITCHING);
 
 	w->page = WINDOW_OPTIONS_PAGE_DISPLAY;
 	window_init_scroll_widgets(w);
@@ -293,47 +297,65 @@ static void window_options_mouseup()
 		window_shortcut_keys_open();
 		break;
 	case WIDX_SCREEN_EDGE_SCROLLING:
-		gGeneral_config.edge_scrolling ^= 1;
-		config_save();
+		gConfigGeneral.edge_scrolling ^= 1;
+		config_save_default();
 		window_invalidate(w);
+		break;
+	case WIDX_TOOLBAR_SHOW_FINANCES:
+		gConfigInterface.toolbar_show_finances ^= 1;
+		config_save_default();
+		window_invalidate(w);
+		window_invalidate_by_class(WC_TOP_TOOLBAR);
+		break;
+	case WIDX_TOOLBAR_SHOW_RESEARCH:
+		gConfigInterface.toolbar_show_research ^= 1;
+		config_save_default();
+		window_invalidate(w);
+		window_invalidate_by_class(WC_TOP_TOOLBAR);
+		break;
+	case WIDX_ALLOW_SUBTYPE_SWITCHING:
+		gConfigInterface.allow_subtype_switching ^= 1;
+		config_save_default();
+		window_invalidate(w);
+		window_invalidate_by_class(WC_RIDE);
 		break;
 	case WIDX_REAL_NAME_CHECKBOX:
 		RCT2_GLOBAL(RCT2_ADDRESS_PARK_FLAGS, uint32) ^= PARK_FLAGS_SHOW_REAL_GUEST_NAMES;
 		RCT2_CALLPROC_X(0x0069C52F, RCT2_GLOBAL(RCT2_ADDRESS_PARK_FLAGS, uint32) & PARK_FLAGS_SHOW_REAL_GUEST_NAMES ? 0 : 1, 0, 0, 0, 0, 0, 0);
 		break;
 	case WIDX_TILE_SMOOTHING_CHECKBOX:
-		gGeneral_config.landscape_smoothing ^= 1;
-		config_save();
+		gConfigGeneral.landscape_smoothing ^= 1;
+		config_save_default();
 		gfx_invalidate_screen();
 		break;
 	case WIDX_GRIDLINES_CHECKBOX:
-		gGeneral_config.always_show_gridlines ^= 1;
-		config_save();
+		gConfigGeneral.always_show_gridlines ^= 1;
+		config_save_default();
 		gfx_invalidate_screen();
 		if ((w = window_get_main()) != NULL) {
-			if (gGeneral_config.always_show_gridlines)
+			if (gConfigGeneral.always_show_gridlines)
 				w->viewport->flags |= VIEWPORT_FLAG_GRIDLINES;
 			else 
 				w->viewport->flags &= ~VIEWPORT_FLAG_GRIDLINES;
 		}
 		break;
 	case WIDX_SAVE_PLUGIN_DATA_CHECKBOX:
-		gGeneral_config.save_plugin_data ^= 1;
-		config_save();
+		gConfigGeneral.save_plugin_data ^= 1;
+		config_save_default();
 		window_invalidate(w);
 		break;
-	case WIDX_SOUND_SW_BUFFER_CHECKBOX:
-		pause_sounds();
-		gSound_config.forced_software_buffering ^= 1;
-		config_save();
-		unpause_sounds();
+	case WIDX_SOUND_CHECKBOX:
+		toggle_all_sounds();
+		config_save_default();
 		window_invalidate(w);
 		break;
-	case WIDX_SOUND_PAUSED_CHECKBOX:
-		if (g_sounds_disabled)
-			unpause_sounds();
-		else
-			pause_sounds();
+	case WIDX_MUSIC_CHECKBOX:
+		RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_MUSIC, uint8) ^= 1;
+		if (RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_MUSIC, uint8) == 0)
+			stop_ride_music();
+
+		gConfigSound.ride_music ^= 1;
+		config_save_default();
 		window_invalidate(w);
 		break;
 	}
@@ -351,6 +373,8 @@ static void window_options_mousedown(int widgetIndex, rct_window*w, rct_widget* 
 
 	switch (widgetIndex) {
 	case WIDX_SOUND_DROPDOWN:
+		audio_get_devices();
+
 		// populate the list with the sound devices
 		for (i = 0; i < gAudioDeviceCount; i++) {
 			gDropdownItemsFormat[i] = 1142;
@@ -369,29 +393,7 @@ static void window_options_mousedown(int widgetIndex, rct_window*w, rct_widget* 
 
 		window_options_show_dropdown(w, widget, 2);
 
-		gDropdownItemsChecked = gGeneral_config.show_height_as_units ? 1 : 2;
-		break;
-	case WIDX_MUSIC_DROPDOWN:
-		gDropdownItemsFormat[0] = 1142;
-		gDropdownItemsFormat[1] = 1142;
-		gDropdownItemsArgs[0] = STR_OFF;
-		gDropdownItemsArgs[1] = STR_ON;
-
-		window_options_show_dropdown(w, widget, 2);
-
-		gDropdownItemsChecked = 1 << RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_MUSIC, uint8);
-		break;
-	case WIDX_SOUND_QUALITY_DROPDOWN:
-		num_items = 3;
-
-		for (i = 0; i < num_items; i++) {
-			gDropdownItemsFormat[i] = 1142;
-			gDropdownItemsArgs[i] = STR_SOUND_LOW + i; // low, medium, high
-		}
-
-		window_options_show_dropdown(w, widget, num_items);
-
-		gDropdownItemsChecked = 1 << gSound_config.sound_quality;
+		gDropdownItemsChecked = gConfigGeneral.show_height_as_units ? 1 : 2;
 		break;
 	case WIDX_TITLE_MUSIC_DROPDOWN:
 		num_items = 3;
@@ -403,7 +405,7 @@ static void window_options_mousedown(int widgetIndex, rct_window*w, rct_widget* 
 
 		window_options_show_dropdown(w, widget, num_items);
 
-		gDropdownItemsChecked = 1 << gGeneral_config.title_music;
+		gDropdownItemsChecked = 1 << gConfigSound.title_music;
 		break;
 	case WIDX_CURRENCY_DROPDOWN:
 		num_items = 10;
@@ -415,7 +417,7 @@ static void window_options_mousedown(int widgetIndex, rct_window*w, rct_widget* 
 
 		window_options_show_dropdown(w, widget, num_items);
 
-		gDropdownItemsChecked = 1 << gGeneral_config.currency_format;
+		gDropdownItemsChecked = 1 << gConfigGeneral.currency_format;
 		break;
 	case WIDX_DISTANCE_DROPDOWN:
 		gDropdownItemsFormat[0] = 1142;
@@ -425,7 +427,7 @@ static void window_options_mousedown(int widgetIndex, rct_window*w, rct_widget* 
 
 		window_options_show_dropdown(w, widget, 2);
 
-		gDropdownItemsChecked = 1 << gGeneral_config.measurement_format;
+		gDropdownItemsChecked = 1 << gConfigGeneral.measurement_format;
 		break;
 	case WIDX_RESOLUTION_DROPDOWN:
 	{
@@ -442,7 +444,7 @@ static void window_options_mousedown(int widgetIndex, rct_window*w, rct_widget* 
 			args[1] = resolution->width;
 			args[2] = resolution->height;
 
-			if (resolution->width == gGeneral_config.fullscreen_width && resolution->height == gGeneral_config.fullscreen_height)
+			if (resolution->width == gConfigGeneral.fullscreen_width && resolution->height == gConfigGeneral.fullscreen_height)
 				selectedResolution = i;
 		}
 
@@ -463,7 +465,7 @@ static void window_options_mousedown(int widgetIndex, rct_window*w, rct_widget* 
 
 		window_options_show_dropdown(w, widget, 3);
 
-		gDropdownItemsChecked = 1 << gGeneral_config.fullscreen_mode;
+		gDropdownItemsChecked = 1 << gConfigGeneral.fullscreen_mode;
 		break;
 	case WIDX_TEMPERATURE_DROPDOWN:
 		gDropdownItemsFormat[0] = 1142;
@@ -473,7 +475,7 @@ static void window_options_mousedown(int widgetIndex, rct_window*w, rct_widget* 
 
 		window_options_show_dropdown(w, widget, 2);
 
-		gDropdownItemsChecked = 1 << gGeneral_config.temperature_format;
+		gDropdownItemsChecked = 1 << gConfigGeneral.temperature_format;
 		break;
 	case WIDX_CONSTRUCTION_MARKER_DROPDOWN:
 		gDropdownItemsFormat[0] = 1142;
@@ -483,7 +485,7 @@ static void window_options_mousedown(int widgetIndex, rct_window*w, rct_widget* 
 
 		window_options_show_dropdown(w, widget, 2);
 
-		gDropdownItemsChecked = 1 << gGeneral_config.construction_marker_colour;
+		gDropdownItemsChecked = 1 << gConfigGeneral.construction_marker_colour;
 		break;
 	case WIDX_LANGUAGE_DROPDOWN:
 		for (i = 1; i < LANGUAGE_COUNT; i++) {
@@ -492,6 +494,14 @@ static void window_options_mousedown(int widgetIndex, rct_window*w, rct_widget* 
 		}
 		window_options_show_dropdown(w, widget, LANGUAGE_COUNT - 1);
 		gDropdownItemsChecked = 1 << (gCurrentLanguage - 1);
+		break;
+	case WIDX_AUTOSAVE_DROPDOWN:
+		for (i = AUTOSAVE_EVERY_WEEK; i <= AUTOSAVE_NEVER; i++) {
+			gDropdownItemsFormat[i] = 1142;
+			gDropdownItemsArgs[i] = 2701 + i;
+		}
+		window_options_show_dropdown(w, widget, AUTOSAVE_NEVER + 1);
+		gDropdownItemsChecked = 1 << gConfigGeneral.autosave_frequency;
 		break;
 	}
 }
@@ -536,97 +546,89 @@ static void window_options_dropdown()
 	case WIDX_HEIGHT_LABELS_DROPDOWN:
 		// reset flag and set it to 1 if height as units is selected
 		RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_FLAGS, uint8) &= ~CONFIG_FLAG_SHOW_HEIGHT_AS_UNITS;
-		gGeneral_config.show_height_as_units = 0;
+		gConfigGeneral.show_height_as_units = 0;
 
 		if (dropdownIndex == 0) {
 			RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_FLAGS, uint8) |= CONFIG_FLAG_SHOW_HEIGHT_AS_UNITS;
-			gGeneral_config.show_height_as_units = 1;
+			gConfigGeneral.show_height_as_units = 1;
 		}
 
 		window_options_update_height_markers();
-		break;
-	case WIDX_MUSIC_DROPDOWN:
-		RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_MUSIC, uint8) = (uint8)dropdownIndex;
-		config_save();
-		stop_ride_music();//RCT2_CALLPROC_EBPSAFE(0x006BCA9F);
-		window_invalidate(w);
-		break;
-	case WIDX_SOUND_QUALITY_DROPDOWN:
-		RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_MAX_VEHICLE_SOUNDS, uint8) = RCT2_GLOBAL(0x009AF601 + dropdownIndex, uint8);
-		RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_MAX_NO_SOUNDS, uint8) = RCT2_GLOBAL(0x009AF604 + dropdownIndex, uint8);
-		gSound_config.sound_quality = (sint8)dropdownIndex;
-		config_save();
-		window_invalidate(w);
 		break;
 	case WIDX_TITLE_MUSIC_DROPDOWN:
 		if (dropdownIndex == 1 && !platform_file_exists(get_file_path(PATH_ID_CSS50))) {
 			window_error_open(2742, 2743);
 		} else {
-			gGeneral_config.title_music = (sint8)dropdownIndex;
-			config_save();
+			gConfigSound.title_music = (sint8)dropdownIndex;
+			config_save_default();
 			window_invalidate(w);
 		}
+
+		stop_title_music();
+		if (dropdownIndex != 0)
+			start_title_music();
 		break;
 	case WIDX_CURRENCY_DROPDOWN:
-		gGeneral_config.currency_format = (sint8)dropdownIndex;
-		config_save();
+		gConfigGeneral.currency_format = (sint8)dropdownIndex;
+		config_save_default();
 		gfx_invalidate_screen();
 		break;
 	case WIDX_DISTANCE_DROPDOWN:
-		gGeneral_config.measurement_format = (sint8)dropdownIndex;
-		config_save();
+		gConfigGeneral.measurement_format = (sint8)dropdownIndex;
+		config_save_default();
 		window_options_update_height_markers();
 		break;
 	case WIDX_RESOLUTION_DROPDOWN:
 		{
 			resolution *resolution = &gResolutions[dropdownIndex];
-			if (resolution->width != gGeneral_config.fullscreen_width || resolution->height != gGeneral_config.fullscreen_height) {
-				gGeneral_config.fullscreen_width = resolution->width;
-				gGeneral_config.fullscreen_height = resolution->height;
+			if (resolution->width != gConfigGeneral.fullscreen_width || resolution->height != gConfigGeneral.fullscreen_height) {
+				gConfigGeneral.fullscreen_width = resolution->width;
+				gConfigGeneral.fullscreen_height = resolution->height;
 
-				if (gGeneral_config.fullscreen_mode == SDL_WINDOW_FULLSCREEN)
-					osinterface_set_fullscreen_mode(SDL_WINDOW_FULLSCREEN);
+				if (gConfigGeneral.fullscreen_mode == SDL_WINDOW_FULLSCREEN)
+					platform_set_fullscreen_mode(SDL_WINDOW_FULLSCREEN);
 
-				config_save();
+				config_save_default();
 				gfx_invalidate_screen();
 			}
 		}
 		break;
 	case WIDX_FULLSCREEN_DROPDOWN:
-		if (dropdownIndex != gGeneral_config.fullscreen_mode){
-			if (dropdownIndex == 2){
-				w->disabled_widgets |= (1 << WIDX_RESOLUTION_DROPDOWN);
-				w->disabled_widgets |= (1 << WIDX_RESOLUTION);
-			} else {
-				w->disabled_widgets &= ~(1 << WIDX_RESOLUTION_DROPDOWN);
-				w->disabled_widgets &= ~(1 << WIDX_RESOLUTION);
-			}
-			osinterface_set_fullscreen_mode(dropdownIndex);
+		if (dropdownIndex != gConfigGeneral.fullscreen_mode){
+			platform_set_fullscreen_mode(dropdownIndex);
 			
-			gGeneral_config.fullscreen_mode = (uint8)dropdownIndex;
-			config_save();
+			gConfigGeneral.fullscreen_mode = (uint8)dropdownIndex;
+			config_save_default();
+			gfx_invalidate_screen();
 		}
 		break;
 	case WIDX_TEMPERATURE_DROPDOWN:
-		if (dropdownIndex != gGeneral_config.temperature_format) {
-			gGeneral_config.temperature_format = (sint8)dropdownIndex;
-			config_save();
+		if (dropdownIndex != gConfigGeneral.temperature_format) {
+			gConfigGeneral.temperature_format = (sint8)dropdownIndex;
+			config_save_default();
 			gfx_invalidate_screen();
 		}
 		break;
 	case WIDX_CONSTRUCTION_MARKER_DROPDOWN:
-		if (dropdownIndex != gGeneral_config.construction_marker_colour) {
-			gGeneral_config.construction_marker_colour = (uint8)dropdownIndex;
-			config_save();
+		if (dropdownIndex != gConfigGeneral.construction_marker_colour) {
+			gConfigGeneral.construction_marker_colour = (uint8)dropdownIndex;
+			config_save_default();
 			gfx_invalidate_screen();
 		}
 		break;
 	case WIDX_LANGUAGE_DROPDOWN:
 		if (dropdownIndex != gCurrentLanguage - 1) {
 			language_open(dropdownIndex + 1);
-			gGeneral_config.language = dropdownIndex + 1;
-			config_save();
+			gConfigGeneral.language = dropdownIndex + 1;
+			config_save_default();
 			gfx_invalidate_screen();
+		}
+		break;
+	case WIDX_AUTOSAVE_DROPDOWN:
+		if (dropdownIndex != gConfigGeneral.autosave_frequency) {
+			gConfigGeneral.autosave_frequency = (uint8)dropdownIndex;
+			config_save_default();
+			window_invalidate(w);
 		}
 		break;
 	}
@@ -645,16 +647,26 @@ static void window_options_invalidate()
 	window_get_register(w);
 
 	window_options_set_pressed_tab(w);
-	for (i = WIDX_RESOLUTION; i <= WIDX_SAVE_PLUGIN_DATA_CHECKBOX; i++) {
+	for (i = WIDX_RESOLUTION; i < WINDOW_OPTIONS_WIDGETS_SIZE; i++) {
 		window_options_widgets[i].type = WWT_EMPTY;
 	}
 
 	switch (w->page) {
 	case WINDOW_OPTIONS_PAGE_DISPLAY:
 		// resolution
-		RCT2_GLOBAL(0x013CE952 + 16, uint16) = gGeneral_config.fullscreen_width;
-		RCT2_GLOBAL(0x013CE952 + 18, uint16) = gGeneral_config.fullscreen_height;
-		RCT2_GLOBAL(0x013CE952 + 12, uint16) = 2773 + gGeneral_config.fullscreen_mode;
+		RCT2_GLOBAL(0x013CE952 + 16, uint16) = (uint16)gConfigGeneral.fullscreen_width;
+		RCT2_GLOBAL(0x013CE952 + 18, uint16) = (uint16)gConfigGeneral.fullscreen_height;
+		RCT2_GLOBAL(0x013CE952 + 12, uint16) = 2773 + gConfigGeneral.fullscreen_mode;
+
+		// disable resolution dropdown on "Fullscreen (desktop)"
+		if (gConfigGeneral.fullscreen_mode == 2){
+			w->disabled_widgets |= (1 << WIDX_RESOLUTION_DROPDOWN);
+			w->disabled_widgets |= (1 << WIDX_RESOLUTION);
+		}
+		else {
+			w->disabled_widgets &= ~(1 << WIDX_RESOLUTION_DROPDOWN);
+			w->disabled_widgets &= ~(1 << WIDX_RESOLUTION);
+		}
 
 		// landscape tile smoothing checkbox
 		if ((RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_FLAGS, uint8) & CONFIG_FLAG_DISABLE_SMOOTH_LANDSCAPE))
@@ -682,16 +694,16 @@ static void window_options_invalidate()
 		break;
 	case WINDOW_OPTIONS_PAGE_CULTURE:
 		// currency: pounds, dollars, etc. (10 total)
-		RCT2_GLOBAL(0x013CE952 + 12, uint16) = STR_POUNDS + gGeneral_config.currency_format;
+		RCT2_GLOBAL(0x013CE952 + 12, uint16) = STR_POUNDS + gConfigGeneral.currency_format;
 
 		// distance: metric/imperial
-		RCT2_GLOBAL(0x013CE952 + 14, uint16) = STR_IMPERIAL + gGeneral_config.measurement_format;
+		RCT2_GLOBAL(0x013CE952 + 14, uint16) = STR_IMPERIAL + gConfigGeneral.measurement_format;
 
 		// temperature: celsius/fahrenheit
-		RCT2_GLOBAL(0x013CE952 + 20, uint16) = STR_CELSIUS + gGeneral_config.temperature_format;
+		RCT2_GLOBAL(0x013CE952 + 20, uint16) = STR_CELSIUS + gConfigGeneral.temperature_format;
 
 		// height: units/real values
-		RCT2_GLOBAL(0x013CE952 + 6, uint16) = gGeneral_config.show_height_as_units ? STR_UNITS : STR_REAL_VALUES;
+		RCT2_GLOBAL(0x013CE952 + 6, uint16) = gConfigGeneral.show_height_as_units ? STR_UNITS : STR_REAL_VALUES;
 
 		window_options_widgets[WIDX_LANGUAGE].type = WWT_DROPDOWN;
 		window_options_widgets[WIDX_LANGUAGE_DROPDOWN].type = WWT_DROPDOWN_BUTTON;
@@ -719,42 +731,31 @@ static void window_options_invalidate()
 		RCT2_GLOBAL(0x013CE952 + 8, uint16) = STR_OFF + RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_MUSIC, uint8);
 
 		// sound quality: low/medium/high
-		RCT2_GLOBAL(0x013CE952 + 10, uint16) = STR_SOUND_LOW + gSound_config.sound_quality;
+		RCT2_GLOBAL(0x013CE952 + 10, uint16) = STR_SOUND_LOW + gConfigSound.sound_quality;
 
-		//Sound pause checkbox
-		if (!g_sounds_disabled)
-			w->pressed_widgets |= (1ULL << WIDX_SOUND_PAUSED_CHECKBOX);
-		else
-			w->pressed_widgets &= ~(1ULL << WIDX_SOUND_PAUSED_CHECKBOX);
-		
-		// sound software mixing buffer checkbox
-		if (gSound_config.forced_software_buffering)
-			w->pressed_widgets |= (1ULL << WIDX_SOUND_SW_BUFFER_CHECKBOX);
-		else 
-			w->pressed_widgets &= ~(1ULL << WIDX_SOUND_SW_BUFFER_CHECKBOX);
+		widget_set_checkbox_value(w, WIDX_SOUND_CHECKBOX, gConfigSound.sound);
+		widget_set_checkbox_value(w, WIDX_MUSIC_CHECKBOX, RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_MUSIC, uint8));
 
 		window_options_widgets[WIDX_SOUND].type = WWT_DROPDOWN;
 		window_options_widgets[WIDX_SOUND_DROPDOWN].type = WWT_DROPDOWN_BUTTON;
-		window_options_widgets[WIDX_MUSIC].type = WWT_DROPDOWN;
-		window_options_widgets[WIDX_MUSIC_DROPDOWN].type = WWT_DROPDOWN_BUTTON;
-		window_options_widgets[WIDX_SOUND_QUALITY].type = WWT_DROPDOWN;
-		window_options_widgets[WIDX_SOUND_QUALITY_DROPDOWN].type = WWT_DROPDOWN_BUTTON;
-		window_options_widgets[WIDX_SOUND_SW_BUFFER_CHECKBOX].type = WWT_CHECKBOX;
-		window_options_widgets[WIDX_SOUND_PAUSED_CHECKBOX].type = WWT_CHECKBOX;
+		window_options_widgets[WIDX_SOUND_CHECKBOX].type = WWT_CHECKBOX;
+		window_options_widgets[WIDX_MUSIC_CHECKBOX].type = WWT_CHECKBOX;
 		window_options_widgets[WIDX_TITLE_MUSIC].type = WWT_DROPDOWN;
 		window_options_widgets[WIDX_TITLE_MUSIC_DROPDOWN].type = WWT_DROPDOWN_BUTTON;
 		break;
 	case WINDOW_OPTIONS_PAGE_INPUT:
-		// screen edge scrolling checkbox
-		if (gGeneral_config.edge_scrolling)
-			w->pressed_widgets |= (1ULL << WIDX_SCREEN_EDGE_SCROLLING);
-		else
-			w->pressed_widgets &= ~(1ULL << WIDX_SCREEN_EDGE_SCROLLING);
+		widget_set_checkbox_value(w, WIDX_SCREEN_EDGE_SCROLLING, gConfigGeneral.edge_scrolling);
+		widget_set_checkbox_value(w, WIDX_TOOLBAR_SHOW_FINANCES, gConfigInterface.toolbar_show_finances);
+		widget_set_checkbox_value(w, WIDX_TOOLBAR_SHOW_RESEARCH, gConfigInterface.toolbar_show_research);
 
 		window_options_widgets[WIDX_SCREEN_EDGE_SCROLLING].type = WWT_CHECKBOX;
 		window_options_widgets[WIDX_HOTKEY_DROPDOWN].type = WWT_DROPDOWN_BUTTON;
+		window_options_widgets[WIDX_TOOLBAR_SHOW_FINANCES].type = WWT_CHECKBOX;
+		window_options_widgets[WIDX_TOOLBAR_SHOW_RESEARCH].type = WWT_CHECKBOX;
 		break;
 	case WINDOW_OPTIONS_PAGE_MISC:
+		widget_set_checkbox_value(w, WIDX_ALLOW_SUBTYPE_SWITCHING, gConfigInterface.allow_subtype_switching);
+
 		// real name checkbox
 		if (RCT2_GLOBAL(RCT2_ADDRESS_PARK_FLAGS, uint32) & PARK_FLAGS_SHOW_REAL_GUEST_NAMES)
 			w->pressed_widgets |= (1ULL << WIDX_REAL_NAME_CHECKBOX);
@@ -762,7 +763,7 @@ static void window_options_invalidate()
 			w->pressed_widgets &= ~(1ULL << WIDX_REAL_NAME_CHECKBOX);
 
 		// save plugin data checkbox
-		if (gGeneral_config.save_plugin_data)
+		if (gConfigGeneral.save_plugin_data)
 			w->pressed_widgets |= (1ULL << WIDX_SAVE_PLUGIN_DATA_CHECKBOX);
 		else
 			w->pressed_widgets &= ~(1ULL << WIDX_SAVE_PLUGIN_DATA_CHECKBOX);
@@ -772,13 +773,16 @@ static void window_options_invalidate()
 			w->disabled_widgets |= (1ULL << WIDX_REAL_NAME_CHECKBOX);
 
 		// save plugin data checkbox: visible or not
-		if (RCT2_GLOBAL(0x00F42BDA, uint8) == 1)
+		if (RCT2_GLOBAL(RCT2_ADDRESS_CUSTOM_OBJECTS_INSTALLED, uint8) == 1)
 			window_options_widgets[WIDX_SAVE_PLUGIN_DATA_CHECKBOX].type = WWT_EMPTY;
 		else
 			window_options_widgets[WIDX_SAVE_PLUGIN_DATA_CHECKBOX].type = WWT_CHECKBOX;
 
 		window_options_widgets[WIDX_REAL_NAME_CHECKBOX].type = WWT_CHECKBOX;
 		window_options_widgets[WIDX_SAVE_PLUGIN_DATA_CHECKBOX].type = WWT_CHECKBOX;
+		window_options_widgets[WIDX_AUTOSAVE].type = WWT_DROPDOWN;
+		window_options_widgets[WIDX_AUTOSAVE_DROPDOWN].type = WWT_DROPDOWN_BUTTON;
+		window_options_widgets[WIDX_ALLOW_SUBTYPE_SWITCHING].type = WWT_CHECKBOX;
 		break;
 	}
 }
@@ -830,16 +834,25 @@ static void window_options_paint()
 		gfx_draw_string_left(dpi, STR_HEIGHT_LABELS, w, 0, w->x + 10, w->y + window_options_widgets[WIDX_HEIGHT_LABELS].top + 1);
 		break;
 	case WINDOW_OPTIONS_PAGE_AUDIO:
-		gfx_draw_string_left(dpi, STR_MUSIC, w, 0, w->x + 10, w->y + window_options_widgets[WIDX_MUSIC].top + 1);
-		gfx_draw_string_left(dpi, STR_SOUND_QUALITY, w, 0, w->x + 10, w->y + window_options_widgets[WIDX_SOUND_QUALITY].top + 1);
 		gfx_draw_string_left(dpi, 2738, w, 12, w->x + 10, w->y + window_options_widgets[WIDX_TITLE_MUSIC].top + 1);
 		gfx_draw_string_left(
 			dpi,
-			2739 + gGeneral_config.title_music,
+			2739 + gConfigSound.title_music,
 			NULL,
 			12,
 			w->x + window_options_widgets[WIDX_TITLE_MUSIC].left + 1,
 			w->y + window_options_widgets[WIDX_TITLE_MUSIC].top
+		);
+		break;
+	case WINDOW_OPTIONS_PAGE_MISC:
+		gfx_draw_string_left(dpi, 2700, w, 12, w->x + 10, w->y + window_options_widgets[WIDX_AUTOSAVE].top + 1);
+		gfx_draw_string_left(
+			dpi,
+			2701 + gConfigGeneral.autosave_frequency,
+			NULL,
+			12,
+			w->x + window_options_widgets[WIDX_AUTOSAVE].left + 1,
+			w->y + window_options_widgets[WIDX_AUTOSAVE].top
 		);
 		break;
 	}
@@ -861,9 +874,9 @@ static void window_options_show_dropdown(rct_window *w, rct_widget *widget, int 
 
 static void window_options_update_height_markers() 
 {
-	RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_HEIGHT_MARKERS, uint16) = gGeneral_config.show_height_as_units ?
-		0 : (gGeneral_config.measurement_format + 1) * 256;
-	config_save();
+	RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_HEIGHT_MARKERS, uint16) = gConfigGeneral.show_height_as_units ?
+		0 : (gConfigGeneral.measurement_format + 1) * 256;
+	config_save_default();
 	gfx_invalidate_screen();
 }
 
@@ -875,10 +888,8 @@ static void window_options_set_page(rct_window *w, int page)
 	w->frame_no = 0;
 
 	window_invalidate(w);
-
-	RCT2_CALLPROC_X(w->event_handlers[WE_RESIZE], 0, 0, 0, 0, (int)w, 0, 0);
-	RCT2_CALLPROC_X(w->event_handlers[WE_INVALIDATE], 0, 0, 0, 0, (int)w, 0, 0);
-
+	window_event_resize_call(w);
+	window_event_invalidate_call(w);
 	window_init_scroll_widgets(w);
 	window_invalidate(w);
 }

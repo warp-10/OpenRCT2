@@ -25,7 +25,7 @@
 #include "../interface/viewport.h"
 #include "../interface/window.h"
 #include "../sprites.h"
-#include "../windows/scenery.h"
+#include "../world/scenery.h"
 
 
 enum WINDOW_MAP_WIDGET_IDX {
@@ -77,8 +77,15 @@ static rct_widget window_map_widgets[] = {
 	{ WIDGETS_END },
 };
 
+// used in transforming viewport view coordinates to minimap coordinates
+// rct2: 0x00981BBC (these two tables are interspersed)
+static const sint16 _minimap_offsets_x[4] = { 0xF8, 0x1F8, 0xF8, 0xFFF8 };
+// rct2: 0x00981BBE
+static const sint16 _minimap_offsets_y[4] = { 0, 0x100, 0x200, 0x100 };
+
 static void window_map_emptysub() { }
 static void window_map_close();
+static void window_map_resize();
 static void window_map_mouseup();
 static void window_map_mousedown(int widgetIndex, rct_window*w, rct_widget* widget);
 static void window_map_update(rct_window *w);
@@ -92,12 +99,12 @@ static void window_map_tooltip();
 static void window_map_set_bounds(rct_window* w);
 
 static void window_map_init_map();
-static void sub_68C990();
+static void window_map_center_on_view_point();
 
 static void* window_map_events[] = {
 	window_map_close,
 	window_map_mouseup,
-	window_map_emptysub,
+	window_map_resize,
 	window_map_mousedown,
 	window_map_emptysub,
 	window_map_emptysub,
@@ -170,13 +177,11 @@ void window_map_open()
 		(1 << WIDX_MAP_SIZE_SPINNER_DOWN);
 	window_init_scroll_widgets(w);
 
-	window_map_set_bounds(w);
-
 	w->map.rotation = RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_ROTATION, uint16);
 
 	window_map_init_map();
 	RCT2_GLOBAL(0x00F64F05, uint8) = 0;
-	sub_68C990();
+	window_map_center_on_view_point();
 
 	w->colours[0] = 12;
 	w->colours[1] = 24;
@@ -195,9 +200,28 @@ static void window_map_close()
 	rct2_free(RCT2_GLOBAL(RCT2_ADDRESS_MAP_IMAGE_DATA, uint32*));
 	if ((RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) & INPUT_FLAG_TOOL_ACTIVE) &&
 		RCT2_GLOBAL(RCT2_ADDRESS_TOOL_WINDOWCLASS, uint8) == w->classification &&
-		RCT2_GLOBAL(RCT2_ADDRESS_TOOL_WIDGETINDEX, uint16) == w->number) {
+		RCT2_GLOBAL(RCT2_ADDRESS_TOOL_WINDOWNUMBER, uint16) == w->number) {
 		tool_cancel();
 	}
+	//Reset land tool size
+	RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16) = 0;
+}
+
+/**
+*
+*  rct2: 0x0068D7DC
+*/
+void window_map_resize()
+{
+	rct_window *w;
+
+	window_get_register(w);
+
+	w->flags |= WF_RESIZABLE; // (1 << 8)
+	w->min_width = 245;
+	w->max_width = 800;
+	w->min_height = 259;
+	w->max_height = 560;
 }
 
 /**
@@ -209,9 +233,11 @@ static void window_map_mouseup()
 	//RCT2_CALLPROC_EBPSAFE(0x0068CFC1);
 	sint16 var_idx;
 	rct_window* var_w;
+	//Maximum land ownership tool size
+	int land_tool_limit;
 
 	window_widget_get_registers(var_w, var_idx);
-	
+
 	switch (var_idx)
 	{
 	case WIDX_CLOSE:
@@ -268,18 +294,20 @@ static void window_map_mouseup()
 
 	case WIDX_LAND_TOOL_SMALLER:
 		--RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16);
+		land_tool_limit=1;
 
-		if (RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16) < 1)
-			RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16) = 1;
+		if (RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16) < land_tool_limit)
+			RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16) = land_tool_limit;
 
 		window_invalidate(var_w);
 		break;
 
 	case WIDX_LAND_TOOL_LARGER:
 		++RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16);
+		land_tool_limit=64;
 
-		if (RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16) > 7)
-			RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16) = 7;
+		if (RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16) > land_tool_limit)
+			RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16) = land_tool_limit;
 
 		window_invalidate(var_w);
 		break;
@@ -516,8 +544,8 @@ static void window_map_invalidate()
 				w->widgets[WIDX_LAND_TOOL_LARGER].type = WWT_TRNBTN;
 				for (i = 0; i < 4; i++)
 					w->widgets[WIDX_LAND_OWNED_CHECKBOX + i].type = WWT_CHECKBOX;
-				w->widgets[WIDX_LAND_TOOL].image = SPR_LAND_TOOL_SIZE_0 +
-					RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, uint16);
+				w->widgets[WIDX_LAND_TOOL].image = RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, uint16) <= 7 ? SPR_LAND_TOOL_SIZE_0 +
+					RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, uint16) : 0xFFFFFFFF;
 			}
 		// if no tool is active: show the default scenario editor buttons
 		} else {
@@ -540,6 +568,20 @@ static void window_map_paint()
 	window_paint_get_registers(w, dpi);
 
 	window_draw_widgets(w, dpi);
+
+	x = w->x + (window_map_widgets[WIDX_LAND_TOOL].left + window_map_widgets[WIDX_LAND_TOOL].right) / 2;
+	y = w->y + (window_map_widgets[WIDX_LAND_TOOL].top + window_map_widgets[WIDX_LAND_TOOL].bottom) / 2;
+
+	// FEATURE larger land tool size support
+	if ((RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16) > 7) &&
+		(RCT2_GLOBAL(RCT2_ADDRESS_TOOL_WINDOWCLASS, uint8) == WC_MAP)) {
+		RCT2_GLOBAL(0x009BC677, char) = FORMAT_BLACK;
+		RCT2_GLOBAL(0x009BC678, char) = FORMAT_COMMA16;
+		RCT2_GLOBAL(0x009BC679, char) = 0;
+		RCT2_GLOBAL(0x013CE952, sint16) = RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16);
+		gfx_draw_string_centred(dpi, 3165, x, y - 2, 0, (void*)0x013CE952);
+	}
+	y = w->y + window_map_widgets[WIDX_LAND_TOOL].bottom + 5;
 
 	// guest tab image (animated)
 	image_id = SPR_TAB_GUESTS_0;
@@ -584,8 +626,8 @@ static void window_map_paint()
 		}
 	} else {
 		if ((RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) & INPUT_FLAG_TOOL_ACTIVE) &&
-			(RCT2_GLOBAL(RCT2_ADDRESS_TOOL_WINDOWCLASS, uint8) != WC_MAP) &&
-			(RCT2_GLOBAL(RCT2_ADDRESS_TOOL_WIDGETINDEX, uint8) != WIDX_SET_LAND_RIGHTS))
+			(RCT2_GLOBAL(RCT2_ADDRESS_TOOL_WINDOWCLASS, uint8) == WC_MAP) &&
+			(RCT2_GLOBAL(RCT2_ADDRESS_TOOL_WIDGETINDEX, uint8) == WIDX_SET_LAND_RIGHTS))
 			return;
 
 		gfx_draw_string_left(dpi, STR_MAP_SIZE, 0, 0, w->x + 4, w->y + w->widgets[WIDX_MAP_SIZE_SPINNER].top + 1);
@@ -599,6 +641,171 @@ static void window_map_paint()
 static void window_map_tooltip()
 {
 	RCT2_GLOBAL(RCT2_ADDRESS_COMMON_FORMAT_ARGS, short) = 0xC55;
+}
+
+/**
+*
+*  part of window_map_paint_peep_overlay and window_map_paint_train_overlay
+*/
+static void window_map_transform_to_map_coords(sint16 *left, sint16 *top)
+{
+	sint16 x = *left, y = *top;
+	sint16 temp;
+
+	switch (RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_ROTATION, uint32)) {
+	case 3:
+		temp = x;
+		x = y;
+		y = temp;
+		x = 0x1FFF - x;
+		break;
+	case 2:
+		x = 0x1FFF - x;
+		y = 0x1FFF - y;
+		break;
+	case 1:
+		temp = x;
+		x = y;
+		y = temp;
+		y = 0x1FFF - y;
+		break;
+	case 0:
+		break;
+	}
+	x >>= 5;
+	y >>= 5;
+
+	*left = -x + y + 0xF8;
+	*top = x + y - 8;
+}
+
+/**
+*
+*  rct2: 0x0068DADA
+*/
+static void window_map_paint_peep_overlay(rct_drawpixelinfo *dpi)
+{
+	//RCT2_CALLPROC_X(0x68DADA, 0, 0, 0, 0, (int)w, (int)dpi, 0);	//draws dots representing guests
+	//return;
+
+	rct_peep *peep;
+	uint16 spriteIndex;
+
+	sint16 left, right, bottom, top;
+	sint16 color;
+
+	FOR_ALL_PEEPS(spriteIndex, peep) {
+		left = peep->x;
+		top = peep->y;
+
+		if (left == SPRITE_LOCATION_NULL)
+			continue;
+
+		window_map_transform_to_map_coords(&left, &top);
+
+		right = left;
+		bottom = top;
+
+		color = 0x14;
+
+		if ((peep->var_0C & 0x200) != 0) {
+			if (peep->type == PEEP_TYPE_STAFF) {
+				if ((RCT2_GLOBAL(RCT2_ADDRESS_WINDOW_MAP_FLASHING_FLAGS, uint16) & (1 << 3)) != 0) {
+					color = 0x8A;
+					left--;
+					if ((RCT2_GLOBAL(RCT2_ADDRESS_WINDOW_MAP_FLASHING_FLAGS, uint16) & (1 << 15)) == 0)
+						color = 0xA;
+				}
+			} else {
+				if ((RCT2_GLOBAL(RCT2_ADDRESS_WINDOW_MAP_FLASHING_FLAGS, uint16) & (1 << 1)) != 0) {
+					color = 0xAC;
+					left--;
+					if ((RCT2_GLOBAL(RCT2_ADDRESS_WINDOW_MAP_FLASHING_FLAGS, uint16) & (1 << 15)) == 0)
+						color = 0x15;
+				}
+			}
+		}
+		gfx_fill_rect(dpi, left, top, right, bottom, color);
+	}
+}
+
+/**
+*
+*  rct2: 0x0068DBC1
+*/
+static void window_map_paint_train_overlay(rct_drawpixelinfo *dpi)
+{
+	//RCT2_CALLPROC_X(0x68DBC1, 0, 0, 0, 0, (int)w, (int)dpi, 0);	//draws dots representing trains
+	//return;
+
+	rct_vehicle *train, *vehicle;
+	uint16 train_index, vehicle_index;
+
+	sint16 left, top, right, bottom;
+
+	for (train_index = RCT2_GLOBAL(RCT2_ADDRESS_SPRITES_START_VEHICLE, uint16); train_index != SPRITE_INDEX_NULL; train_index = train->next) {
+		train = GET_VEHICLE(train_index);
+		for (vehicle_index = train_index; vehicle_index != SPRITE_INDEX_NULL; vehicle_index = vehicle->next_vehicle_on_train) {
+			vehicle = GET_VEHICLE(vehicle_index);
+
+			left = vehicle->x;
+			top = vehicle->y;
+
+			if (left == SPRITE_LOCATION_NULL)
+				continue;
+
+			window_map_transform_to_map_coords(&left, &top);
+
+			right = left;
+			bottom = top;
+
+			gfx_fill_rect(dpi, left, top, right, bottom, 0xAB);
+		}
+	}
+}
+
+/**
+*  The call to gfx_fill_rect was originally wrapped in sub_68DABD which made sure that arguments were ordered correctly,
+*  but it doesn't look like it's ever necessary here so the call was removed.
+* 
+*  rct2: 0x0068D8CE
+*/
+static void window_map_paint_hud_rectangle(rct_drawpixelinfo *dpi)
+{
+	//RCT2_CALLPROC_X(0x68D8CE, 0, 0, 0, 0, 0, (int)dpi, 0);
+	//return;
+
+	rct_window *main_window = window_get_main();
+	if (main_window == NULL)
+		return;
+	rct_viewport *viewport = main_window->viewport;
+	if (viewport == NULL)
+		return;
+
+	int rotation = RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_ROTATION, uint32);
+	sint16 offset_x = _minimap_offsets_x[rotation];
+	sint16 offset_y = _minimap_offsets_y[rotation];
+
+	sint16 left = (viewport->view_x >> 5) + offset_x;
+	sint16 right = ((viewport->view_x + viewport->view_width) >> 5) + offset_x;
+	sint16 top = (viewport->view_y >> 4) + offset_y;
+	sint16 bottom = ((viewport->view_y + viewport->view_height) >> 4) + offset_y;
+
+	// top horizontal lines
+	gfx_fill_rect(dpi, left, top, left + 3, top, 0x38);
+	gfx_fill_rect(dpi, right - 3, top, right, top, 0x38);
+
+	// left vertical lines
+	gfx_fill_rect(dpi, left, top, left, top + 3, 0x38);
+	gfx_fill_rect(dpi, left, bottom - 3, left, bottom, 0x38);
+
+	// bottom horizontal lines
+	gfx_fill_rect(dpi, left, bottom, left + 3, bottom, 0x38);
+	gfx_fill_rect(dpi, right - 3, bottom, right, bottom, 0x38);
+
+	// right vertical lines
+	gfx_fill_rect(dpi, right, top, right, top + 3, 0x38);
+	gfx_fill_rect(dpi, right, bottom - 3, right, bottom, 0x38);
 }
 
 /**
@@ -632,11 +839,11 @@ static void window_map_scrollpaint()
 	*g1_element = pushed_g1_element;
 
 	if (w->selected_tab == 0)
-		RCT2_CALLPROC_X(0x68DADA, 0, 0, 0, 0, (int)w, (int)dpi, 0);	//draws dots representing guests
+		window_map_paint_peep_overlay(dpi);
 	else
-		RCT2_CALLPROC_X(0x68DBC1, 0, 0, 0, 0, (int)w, (int)dpi, 0);	//draws dots representing trains
+		window_map_paint_train_overlay(dpi);
 	
-	RCT2_CALLPROC_X(0x68D8CE, 0, 0, 0, 0, (int)w, (int)dpi, 0);	//draws the HUD rectangle on the map
+	window_map_paint_hud_rectangle(dpi);
 }
 
 /**
@@ -653,7 +860,7 @@ static void window_map_init_map()
 *
 *  rct2: 0x0068C990
 */
-static void sub_68C990()
+static void window_map_center_on_view_point()
 {
 	rct_window *w = window_get_main();
 	rct_window *w_map;
@@ -667,11 +874,17 @@ static void sub_68C990()
 	if (w_map == NULL)
 		return;
 
+	uint8 rotation = RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_ROTATION, uint8);
+
+	// calculate center view point of viewport and transform it to minimap coordinates
+
 	cx = ((w->viewport->view_width >> 1) + w->viewport->view_x) >> 5;
 	dx = ((w->viewport->view_height >> 1) + w->viewport->view_y) >> 4;
-	cx += RCT2_GLOBAL(0x00981BBC + (RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_ROTATION, uint8) * 4), uint16);
-	dx += RCT2_GLOBAL(0x00981BBE + (RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_ROTATION, uint8) * 4), uint16);
+	cx += _minimap_offsets_x[rotation];
+	dx += _minimap_offsets_y[rotation];
 	
+	// calculate width and height of minimap
+
 	ax = w_map->widgets[WIDX_MAP].right - w_map->widgets[WIDX_MAP].left - 11;
 	bx = w_map->widgets[WIDX_MAP].bottom - w_map->widgets[WIDX_MAP].top - 11;
 	bp = ax;
@@ -679,13 +892,11 @@ static void sub_68C990()
 
 	ax >>= 1;
 	bx >>= 1;
-	cx = (cx - ax) > 0 ? cx - ax : 0;
-	dx = (dx - bx) > 0 ? dx - bx : 0;
+	cx = max(cx - ax, 0);
+	dx = max(dx - bx, 0);
 
-	bp = -bp;	// asm: neg bp
-	di = -di;
-	bp += w_map->scrolls[0].h_right;
-	di += w_map->scrolls[0].v_bottom;
+	bp = w_map->scrolls[0].h_right - bp;
+	di = w_map->scrolls[0].v_bottom - di;
 
 	if (bp < 0 && (bp - cx) < 0)
 		cx = 0;
@@ -695,18 +906,5 @@ static void sub_68C990()
 
 	w_map->scrolls[0].h_left = cx;
 	w_map->scrolls[0].v_top = dx;
-	widget_scroll_update_thumbs(w, WIDX_MAP);
-}
-
-/**
-* ref. by: window_map_scrollmousedown
-*  rct2: 0x0068D7DC
-*/
-void window_map_set_bounds(rct_window* w)
-{
-	w->flags |= WF_RESIZABLE; // (1 << 8)
-	w->min_width = 245;
-	w->max_width = 800;
-	w->min_height = 259;
-	w->max_height = 560;
+	widget_scroll_update_thumbs(w_map, WIDX_MAP);
 }

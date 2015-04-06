@@ -5,6 +5,9 @@ sdl
 # Compiled dll
 openrct2.dll
 
+# Distribution
+distribution/windows/*.exe
+
 # Build artifacts
 .cache
 
@@ -227,3 +230,4 @@ pip-log.txt
 #IDA files
 openrct2.id*
 openrct2.nam
+openrct2.til

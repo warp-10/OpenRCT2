@@ -333,7 +333,7 @@ void network_open_chat_box()
 	w->colours[1] = 1;
 	w->colours[2] = 0;
 	w->number = 0;
-	window_text_input_open(w, 0, 2718, 2719, STR_NONE, 0, 64);
+	window_text_input_open(w, 0, 5400, 5401, STR_NONE, 0, 64);
 }
 
 #endif /* DISABLE_NETWORK */

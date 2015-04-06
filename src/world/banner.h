@@ -23,6 +23,7 @@
 
 #include "../common.h"
 
+#define BANNER_NULL 255
 #define MAX_BANNERS 250
 
 typedef struct {
@@ -41,5 +42,7 @@ enum{
 } BANNER_FLAGS;
 
 extern rct_banner *gBanners;
+
+void banner_init();
 
 #endif

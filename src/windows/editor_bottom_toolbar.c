@@ -28,9 +28,10 @@
 #include "../interface/viewport.h"
 #include "../interface/widget.h"
 #include "../interface/window.h"
-#include "../platform/osinterface.h"
+#include "../platform/platform.h"
 #include "../title.h"
 #include "../util/util.h"
+#include "../world/scenery.h"
 #include "error.h"
 
 enum {
@@ -167,7 +168,7 @@ void window_editor_bottom_toolbar_jump_back_to_object_selection() {
 void window_editor_bottom_toolbar_jump_back_to_landscape_editor() {
 	window_close_all();
 	RCT2_CALLPROC_EBPSAFE(0x006DFED0);
-	RCT2_CALLPROC_EBPSAFE(0x006DFEE4);
+	scenery_set_default_placement_configuration();
 	g_editor_step = EDITOR_STEP_LANDSCAPE_EDITOR;
 	window_map_open();
 	gfx_invalidate_screen();
@@ -207,11 +208,32 @@ void window_editor_bottom_toolbar_jump_back_to_options_selection() {
 }
 
 /**
-*
-*  rct2: 0x0066F6B0
-*/
-void window_editor_bottom_toolbar_jump_forward_from_object_selection() {
-	RCT2_CALLPROC_EBPSAFE(0x0066f6b0);
+ *
+ *  rct2: 0x006AB1CE
+ */
+int window_editor_bottom_toolbar_check_object_selection()
+{
+	return RCT2_CALLPROC_EBPSAFE(0x006AB1CE) & 0x100;
+}
+
+/**
+ *
+ *  rct2: 0x0066F6B0
+ */
+void window_editor_bottom_toolbar_jump_forward_from_object_selection()
+{
+	if (window_editor_bottom_toolbar_check_object_selection())
+		return;
+
+	if (RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_TRACK_DESIGNER) {
+		RCT2_CALLPROC_EBPSAFE(0x0066F6E3);
+	} else {
+		RCT2_CALLPROC_EBPSAFE(0x006DFED0);
+		scenery_set_default_placement_configuration();
+		RCT2_GLOBAL(0x00141F570, uint8) = 1;
+		window_map_open();
+		gfx_invalidate_screen();
+	}
 }
 
 /**
@@ -274,7 +296,7 @@ static int show_save_scenario_dialog(char *resultPath)
 	format_string(filterName, STR_RCT2_SCENARIO_FILE, NULL);
 
 	pause_sounds();
-	result = osinterface_open_common_file_dialog(0, title, filename, "*.SC6", filterName);
+	result = platform_open_common_file_dialog(0, title, filename, "*.SC6", filterName);
 	unpause_sounds();
 
 	if (result)
@@ -299,6 +321,10 @@ void window_editor_bottom_toolbar_jump_forward_to_save_scenario()
 	}
 
 	window_close_all();
+
+	window_loadsave_open(LOADSAVETYPE_SAVE | LOADSAVETYPE_SCENARIO);
+	return;
+
 	if (!show_save_scenario_dialog(path)) {
 		gfx_invalidate_screen();
 		return;
@@ -313,7 +339,7 @@ void window_editor_bottom_toolbar_jump_forward_to_save_scenario()
 	// Save the scenario
 	parkFlagsBackup = RCT2_GLOBAL(RCT2_ADDRESS_PARK_FLAGS, uint32);
 	RCT2_GLOBAL(RCT2_ADDRESS_PARK_FLAGS, uint32) &= ~PARK_FLAGS_18;
-	success = scenario_save(path, gGeneral_config.save_plugin_data ? 3 : 2);
+	success = scenario_save(path, gConfigGeneral.save_plugin_data ? 3 : 2);
 	RCT2_GLOBAL(RCT2_ADDRESS_PARK_FLAGS, uint32) = parkFlagsBackup;
 
 	if (success) {

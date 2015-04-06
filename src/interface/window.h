@@ -393,13 +393,17 @@ enum {
 	WC_EDTIOR_OBJECTIVE_OPTIONS = 46,
 	WC_MANAGE_TRACK_DESIGN = 47,
 	WC_TRACK_DELETE_PROMPT = 48,
+	WC_INSTALL_TRACK = 49,
 	WC_CLEAR_SCENERY = 50,
 	WC_CHEATS = 110,
 	WC_RESEARCH = 111,
 	WC_VIEWPORT = 112,
 	WC_TEXTINPUT = 113,
 	WC_MAPGEN = 114,
-	WC_CHAT_HOST = 115
+	WC_LOADSAVE = 115,
+	WC_LOADSAVE_OVERWRITE_PROMPT = 116,
+	WC_TITLE_OPTIONS = 117,
+	WC_CHAT_HOST = 118
 } WINDOW_CLASS;
 
 enum PROMPT_MODE {
@@ -417,6 +421,16 @@ typedef enum {
 	BTM_TB_DIRTY_FLAG_PARK_RATING = (1 << 4)
 } BTM_TOOLBAR_DIRTY_FLAGS;
 
+enum {
+	LOADSAVETYPE_LOAD = 0 << 0,
+	LOADSAVETYPE_SAVE = 1 << 0,
+
+	LOADSAVETYPE_GAME = 0 << 1,
+	LOADSAVETYPE_LANDSCAPE = 1 << 1,
+	LOADSAVETYPE_SCENARIO = 2 << 1,
+	LOADSAVETYPE_TRACK = 3 << 1,
+};
+
 
 // rct2: 0x01420078
 extern rct_window* g_window_list;
@@ -428,6 +442,7 @@ void window_dispatch_update_all();
 void window_update_all();
 rct_window *window_create(int x, int y, int width, int height, uint32 *event_handlers, rct_windowclass cls, uint16 flags);
 rct_window *window_create_auto_pos(int width, int height, uint32 *event_handlers, rct_windowclass cls, uint16 flags);
+rct_window *window_create_centred(int width, int height, uint32 *event_handlers, rct_windowclass cls, uint16 flags);
 void window_close(rct_window *window);
 void window_close_by_class(rct_windowclass cls);
 void window_close_by_number(rct_windowclass cls, rct_windownumber number);
@@ -493,6 +508,7 @@ void window_footpath_open();
 void window_save_prompt_open();
 void window_title_menu_open();
 void window_title_exit_open();
+void window_title_options_open();
 void window_title_logo_open();
 void window_news_open();
 void window_scenarioselect_open();
@@ -502,6 +518,7 @@ void window_land_open();
 void window_water_open();
 void window_staff_list_open();
 void window_guest_list_open();
+void window_guest_list_open_with_filter(int type, int index);
 void window_map_open();
 void window_options_open();
 void window_shortcut_keys_open();
@@ -526,7 +543,9 @@ void window_ride_construct(rct_window *w);
 void window_ride_list_open();
 rct_window * window_construction_open();
 void window_track_place_open();
-void window_new_ride_open();
+rct_window *window_new_ride_open();
+rct_window *window_new_ride_open_research();
+void window_install_track_open(const char* path);
 void window_banner_open(rct_windownumber number);
 void window_sign_open(rct_windownumber number);
 void window_sign_small_open(rct_windownumber number);
@@ -539,6 +558,7 @@ void window_track_manage_open();
 void window_viewport_open();
 void window_text_input_open(rct_window* call_w, int call_widget, rct_string_id title, rct_string_id description, rct_string_id existing_text, uint32 existing_args, int maxLength);
 rct_window *window_mapgen_open();
+rct_window *window_loadsave_open(int type);
 
 void window_editor_main_open();
 void window_editor_bottom_toolbar_open();
@@ -564,6 +584,7 @@ void window_event_mouse_up_call(rct_window* w, int widgetIndex);
 void window_event_resize_call(rct_window* w);
 void window_event_mouse_down_call(rct_window* w, int widgetIndex);
 void window_event_invalidate_call(rct_window* w);
+void window_event_update_call(rct_window *w);
 
 void sub_6EA73F();
 

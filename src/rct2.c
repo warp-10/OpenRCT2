@@ -35,7 +35,6 @@
 #include "management/news_item.h"
 #include "object.h"
 #include "openrct2.h"
-#include "platform/osinterface.h"
 #include "platform/platform.h"
 #include "ride/ride.h"
 #include "ride/track.h"
@@ -44,6 +43,7 @@
 #include "world/map.h"
 #include "world/park.h"
 #include "world/climate.h"
+#include "world/scenery.h"
 #include "world/sprite.h"
 
 typedef struct tm tm_t;
@@ -58,7 +58,7 @@ static void rct2_update_2();
 static jmp_buf _end_update_jump;
 
 void rct2_quit() {
-	if (gGeneral_config.confirmation_prompt) {
+	if (gConfigGeneral.confirmation_prompt) {
 		RCT2_GLOBAL(RCT2_ADDRESS_SAVE_PROMPT_MODE, uint16) = PM_QUIT;
 		window_save_prompt_open();
 	} else
@@ -73,7 +73,7 @@ int rct2_init()
 	RCT2_GLOBAL(0x009AC310, char*) = RCT2_GLOBAL(RCT2_ADDRESS_CMDLINE, char*);
 	get_system_time();
 	RCT2_GLOBAL(0x009DEA69, short) = RCT2_GLOBAL(RCT2_ADDRESS_OS_TIME_DAY, short);
-	RCT2_GLOBAL(0x009DEA6B, short) = RCT2_GLOBAL(RCT2_ADDRESS_OS_TIME_DAY, short);
+	RCT2_GLOBAL(0x009DEA6B, short) = RCT2_GLOBAL(RCT2_ADDRESS_OS_TIME_MONTH, short);
 	if (!rct2_init_directories())
 		return 0;
 
@@ -81,6 +81,7 @@ int rct2_init()
 		return 0;
 
 	config_reset_shortcut_keys();
+	config_shortcut_keys_load();
 	RCT2_GLOBAL(RCT2_ADDRESS_PLACE_OBJECT_MODIFIER, uint8) = 0;
 	// config_load();
 	// RCT2_CALLPROC_EBPSAFE(0x00674B81); // pointless expansion pack crap
@@ -93,8 +94,8 @@ int rct2_init()
 
 	gfx_load_g1();
 	gfx_load_character_widths();
-	osinterface_init();
-	audio_init1();//RCT2_CALLPROC_EBPSAFE(0x006BA8E0); // init_audio();
+	platform_init();
+	audio_init1();
 	viewport_init_all();
 	news_item_init_queue();
 	get_local_time();
@@ -103,13 +104,13 @@ int rct2_init()
 	reset_sprite_list();
 	ride_init_all();
 	window_guest_list_init_vars_a();
-	sub_6BD3A4();// RCT2_CALLPROC_EBPSAFE(0x006BD3A4); //Peep?
+	sub_6BD3A4();
 	map_init(150);
 	park_init();
-	RCT2_CALLPROC_EBPSAFE(0x0066B5C0); // 0x0066B5C0 (part of 0x0066B3E8) screen_game_create_windows()
+	window_title_menu_open();
 	date_reset();
 	climate_reset(CLIMATE_COOL_AND_WET);
-	RCT2_CALLPROC_EBPSAFE(0x006DFEE4);
+	scenery_set_default_placement_configuration();
 	window_new_ride_init_vars();
 	window_guest_list_init_vars_b();
 	window_staff_list_init_vars();
@@ -117,7 +118,7 @@ int rct2_init()
 	title_load();
 
 	gfx_clear(RCT2_ADDRESS(RCT2_ADDRESS_SCREEN_DPI, rct_drawpixelinfo), 10);
-	RCT2_GLOBAL(RCT2_ADDRESS_RUN_INTRO_TICK_PART, uint8) = gGeneral_config.play_intro ? 8 : 255;
+	RCT2_GLOBAL(RCT2_ADDRESS_RUN_INTRO_TICK_PART, uint8) = gConfigGeneral.play_intro ? 8 : 255;
 
 	log_verbose("initialising game finished");
 	return 1;
@@ -132,15 +133,15 @@ int rct2_init_directories()
 	// windows_get_registry_install_info((rct2_install_info*)0x009AA10C, "RollerCoaster Tycoon 2 Setup", "MS Sans Serif", 0);
 
 	// check install directory
-	if (!platform_directory_exists(gGeneral_config.game_path)) {
-		log_verbose("install directory does not exist, %s", gGeneral_config.game_path);
+	if (!platform_directory_exists(gConfigGeneral.game_path)) {
+		log_verbose("install directory does not exist, %s", gConfigGeneral.game_path);
 		if (!config_find_or_browse_install_directory()) {
 			log_fatal("Invalid RCT2 installation path. Please correct in config.ini.");
 			return 0;
 	}
 	}
 
-	strcpy(RCT2_ADDRESS(RCT2_ADDRESS_APP_PATH, char), gGeneral_config.game_path);
+	strcpy(RCT2_ADDRESS(RCT2_ADDRESS_APP_PATH, char), gConfigGeneral.game_path);
 
 	strcpy(RCT2_ADDRESS(RCT2_ADDRESS_APP_PATH_SLASH, char), RCT2_ADDRESS(RCT2_ADDRESS_APP_PATH, char));
 	strcat(RCT2_ADDRESS(RCT2_ADDRESS_APP_PATH_SLASH, char), "\\");
@@ -361,7 +362,7 @@ const char *get_file_path(int pathId)
 	// The original implementation checks if the file is on CD-ROM here (file_on_cdrom[pathId] @ 0x009AA0B1).
 	// If so, the CD-ROM path (cdrom_path @ 0x9AA318) is used instead. This has been removed for now for
 	// the sake of simplicity.
-	strcpy(path, gGeneral_config.game_path);
+	strcpy(path, gConfigGeneral.game_path);
 
 	// Make sure base path is terminated with a slash
 	if (strlen(path) == 0 || path[strlen(path) - 1] != '\\')

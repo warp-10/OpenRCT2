@@ -35,7 +35,7 @@ static void vehicle_update(rct_vehicle *vehicle);
 */
 void vehicle_update_sound_params(rct_vehicle* vehicle)
 {
-	if (!(RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & 2) && (!(RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & 4) || RCT2_GLOBAL(0x0141F570, uint8) == 6)) {
+	if (!(RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_SCENARIO_EDITOR) && (!(RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_TRACK_DESIGNER) || RCT2_GLOBAL(0x0141F570, uint8) == 6)) {
 		if (vehicle->sound1_id != (uint8)-1 || vehicle->sound2_id != (uint8)-1) {
 			if (vehicle->sprite_left != 0x8000) {
 				RCT2_GLOBAL(0x009AF5A0, sint16) = vehicle->sprite_left;
@@ -99,9 +99,8 @@ void vehicle_update_sound_params(rct_vehicle* vehicle)
 
 							sint32 v19 = vehicle->velocity;
 
-							int testaddr = (vehicle->var_31 * 0x65);
-							testaddr += (int)RCT2_ADDRESS(0x009ACFA4, rct_ride_type*)[vehicle->var_D6];
-							uint8 test = ((uint8*)testaddr)[0x74];
+							rct_ride_type* ride_type = GET_RIDE_ENTRY(vehicle->ride_subtype);
+							uint8 test = ride_type->vehicles[vehicle->vehicle_type].var_5A;
 
 							if (test & 1) {
 								v19 *= 2;
@@ -550,10 +549,10 @@ void vehicle_update_all()
 	uint16 sprite_index;
 	rct_vehicle *vehicle;
 
-	if (RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & 2)
+	if (RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_SCENARIO_EDITOR)
 		return;
 
-	if ((RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & 4) && RCT2_GLOBAL(0x0141F570, uint8) != 6)
+	if ((RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_TRACK_DESIGNER) && RCT2_GLOBAL(0x0141F570, uint8) != 6)
 		return;
 
 
@@ -633,4 +632,9 @@ rct_vehicle *vehicle_get_head(rct_vehicle *vehicle)
 	}
 
 	return vehicle;
+}
+
+int vehicle_is_used_in_pairs(rct_vehicle *vehicle)
+{
+	return vehicle->num_seats & VEHICLE_SEAT_PAIR_FLAG;
 }

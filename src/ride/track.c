@@ -19,23 +19,27 @@
  *****************************************************************************/
 
 #include "../addresses.h"
-#include "../platform/osinterface.h"
+#include "../audio/audio.h"
+#include "../game.h"
+#include "../interface/viewport.h"
+#include "../localisation/localisation.h"
+#include "../platform/platform.h"
+#include "../rct1.h"
 #include "../util/sawyercoding.h"
 #include "../util/util.h"
-#include "../rct1.h"
+#include "../world/park.h"
+#include "../windows/error.h"
 #include "ride.h"
 #include "track.h"
-#include "../platform/platform.h"
-#include "../game.h"
-#include "../localisation/localisation.h"
-#include "../world/park.h"
-#include "../interface/viewport.h"
 
 /**
  *
  *  rct2: 0x00997C9D
  */
-const rct_trackdefinition gTrackDefinitions[] = {
+const rct_trackdefinition *gTrackDefinitions = (rct_trackdefinition*)0x00997C9D;
+
+// TODO This table is incorrect or at least missing 69 elements. There should be 256 in total!
+const rct_trackdefinition gTrackDefinitions_INCORRECT[] = {
     // TYPE							VANGLE END					VANGLE START				BANK END				BANK START				SPECIAL
     { TRACK_FLAT,					TRACK_NONE,					TRACK_NONE,					TRACK_BANK_NONE,		TRACK_BANK_NONE,		TRACK_NONE					},	// ELEM_FLAT
     { TRACK_FLAT,					TRACK_NONE,					TRACK_NONE,					TRACK_BANK_NONE,		TRACK_BANK_NONE,		TRACK_NONE					},	// ELEM_END_STATION
@@ -235,11 +239,10 @@ uint32* sub_6AB49A(rct_object_entry* entry){
 	return (((uint32*)object_get_next(object_list_entry)) - 1);
 }
 
-static void get_track_idx_path(char *path)
+static void get_track_idx_path(char *outPath)
 {
-	char *homePath = osinterface_get_orct2_homefolder();
-	sprintf(path, "%s%c%s", homePath, osinterface_get_path_separator(), "Tracks.IDX");
-	free(homePath);
+	platform_get_user_directory(outPath, NULL);
+	strcat(outPath, "tracks.idx");
 }
 
 static void track_list_query_directory(int *outTotalFiles){
@@ -542,10 +545,10 @@ rct_track_td6* load_track_design(const char *path)
 			uint8* track_element = track_elements;
 			while (*track_element != 255) {
 				track_element += 2;
-			}
+		}
 			track_element++;
 			memset(track_element, 255, final_track_element_location - track_element);
-		}
+	}
 
 		// Edit the colours to use the new versions
 		// Unsure why it is 67
@@ -712,12 +715,12 @@ void load_track_scenery_objects(){
 
 	if (track_design->type == RIDE_TYPE_MAZE){
 		// Skip all of the maze track elements
-		while (*(uint32*)track_elements != 0)track_elements += 4;
-		track_elements += 4;
+		while (*(uint32*)track_elements != 0)track_elements += sizeof(rct_maze_element);
+		track_elements += sizeof(rct_maze_element);
 	}
 	else{
 		// Skip track_elements
-		while (*track_elements != 255) track_elements += 2;
+		while (*track_elements != 255) track_elements += sizeof(rct_track_element);
 		track_elements++;
 		
 		// Skip entrance exit elements
@@ -726,14 +729,16 @@ void load_track_scenery_objects(){
 	}
 
 	while (*track_elements != 255){
-		if (!find_object_in_entry_group((rct_object_entry*)track_elements, &entry_type, &entry_index)){
-			object_load(-1, (rct_object_entry*)track_elements, 0);
+		rct_track_scenery* scenery_entry = (rct_track_scenery*)track_elements;
+
+		if (!find_object_in_entry_group(&scenery_entry->scenery_object, &entry_type, &entry_index)){
+			object_load(-1, &scenery_entry->scenery_object, 0);
 		}
 		// Skip object and location/direction/colour
-		track_elements += sizeof(rct_object_entry) + 6;
+		track_elements += sizeof(rct_track_scenery);
 	}
 
-	sub_6A9FC0();
+	reset_loaded_objects();
 }
 
 /**
@@ -741,8 +746,8 @@ void load_track_scenery_objects(){
 * the track preview window to place the whole track. 
 * Depending on the value of bl it modifies the function.
 * bl == 0, Draw outlines on the ground
-* bl == 3, Returns the z value of a succesful placement
-* bl == 5, Returns cost to create the track. Places the track. (used by the preview)
+* bl == 3, Returns the z value of a succesful placement. Only lower 16 bits are the value, the rest may be garbage?
+* bl == 5, Returns cost to create the track. All 32 bits are used. Places the track. (used by the preview)
 * bl == 6, Clear white outlined track.
 *  rct2: 0x006D01B3
 */
@@ -757,7 +762,9 @@ int sub_6D01B3(int bl, int x, int y, int z)
 	edi = 0;
 	ebp = 0;
 	RCT2_CALLFUNC_X(0x006D01B3, &eax, &ebx, &ecx, &edx, &esi, &edi, &ebp);
-	return *((short*)&ebx);
+	if (bl == 3)
+		ebx &= 0xFFFF;
+	return ebx;
 }
 
 /* rct2: 0x006D2189 
@@ -1031,7 +1038,7 @@ rct_track_design *track_get_info(int index, uint8** preview)
 		}
 
 		trackDesign = &RCT2_GLOBAL(RCT2_ADDRESS_TRACK_DESIGN_CACHE, rct_track_design*)[i];
-		
+
 		// Copy the track design apart from the preview image
 		memcpy(&trackDesign->track_td6, loaded_track, sizeof(rct_track_td6));
 		// Load in a new preview image, calculate cost variable, calculate var_06
@@ -1055,7 +1062,47 @@ rct_track_design *track_get_info(int index, uint8** preview)
  */
 int track_rename(const char *text)
 {
-	return (RCT2_CALLPROC_X(0x006D3664, 0, 0, 0, 0, 0, (int)text, 0) & 0x100) == 0;
+	const char* txt_chr = text;
+
+	while (*txt_chr != '\0'){
+		switch (*txt_chr){
+		case '.':
+		case '/':
+		case '\\':
+		case '*':
+		case '?':
+			// Invalid characters
+			RCT2_GLOBAL(0x141E9AC, uint16) = 3353;
+			return 0;
+		}
+		txt_chr++;
+	}
+
+	char new_path[MAX_PATH];
+	subsitute_path(new_path, RCT2_ADDRESS(RCT2_ADDRESS_TRACKS_PATH, char), text);
+	strcat(new_path, ".TD6");
+
+	rct_window* w = window_find_by_class(WC_TRACK_DESIGN_LIST);
+
+	char old_path[MAX_PATH];
+	subsitute_path(old_path, RCT2_ADDRESS(RCT2_ADDRESS_TRACKS_PATH, char), &RCT2_ADDRESS(RCT2_ADDRESS_TRACK_LIST, char)[128 * w->track_list.var_482]);
+
+	if (!platform_file_move(old_path, new_path)) {
+		RCT2_GLOBAL(0x141E9AC, uint16) = 3354;
+		return 0;
+	}
+
+	ride_list_item item = { 0xFC, 0 };
+	track_load_list(item);
+
+	item.type = RCT2_GLOBAL(0xF44158, uint8);
+	item.entry_index = RCT2_GLOBAL(0xF44159, uint8);
+	track_load_list(item);
+
+	reset_track_list_cache();
+	
+	window_invalidate(w);
+	return 1;
 }
 
 /**
@@ -1064,5 +1111,370 @@ int track_rename(const char *text)
  */
 int track_delete()
 {
-	return (RCT2_CALLPROC_X(0x006D3761, 0, 0, 0, 0, 0, 0, 0) & 0x100) == 0;
+	rct_window* w = window_find_by_class(WC_TRACK_DESIGN_LIST);
+
+	char path[MAX_PATH];
+	subsitute_path(path, RCT2_ADDRESS(RCT2_ADDRESS_TRACKS_PATH, char), &RCT2_ADDRESS(RCT2_ADDRESS_TRACK_LIST, char)[128 * w->track_list.var_482]);
+
+	if (!platform_file_delete(path)) {
+		RCT2_GLOBAL(0x141E9AC, uint16) = 3355;
+		return 0;
+	}
+
+	ride_list_item item = { 0xFC, 0 };
+	track_load_list(item);
+
+	item.type = RCT2_GLOBAL(0xF44158, uint8);
+	item.entry_index = RCT2_GLOBAL(0xF44159, uint8);
+	track_load_list(item);
+
+	reset_track_list_cache();
+
+	window_invalidate(w);
+	return 1;
+}
+
+/**
+ * Helper method to determine if a connects to b by its bank and angle, not location.
+ */
+int track_is_connected_by_shape(rct_map_element *a, rct_map_element *b)
+{
+	int trackType, aBank, aAngle, bBank, bAngle;
+	rct_ride *ride;
+
+	ride = GET_RIDE(a->properties.track.ride_index);
+	trackType = a->properties.track.type;
+	aBank = gTrackDefinitions[trackType].bank_end;
+	aAngle = gTrackDefinitions[trackType].vangle_end;
+	if (RCT2_GLOBAL(0x0097D4F2 + (ride->type * 8), uint16) & 8) {
+		if (a->properties.track.colour & 4) {
+			if (aBank == TRACK_BANK_NONE)
+				aBank = TRACK_BANK_UPSIDE_DOWN;
+			else if (aBank == TRACK_BANK_UPSIDE_DOWN)
+				aBank = TRACK_BANK_NONE;
+		}
+	}
+
+	ride = GET_RIDE(b->properties.track.ride_index);
+	trackType = b->properties.track.type;
+	bBank = gTrackDefinitions[trackType].bank_start;
+	bAngle = gTrackDefinitions[trackType].vangle_start;
+	if (RCT2_GLOBAL(0x0097D4F2 + (ride->type * 8), uint16) & 8) {
+		if (b->properties.track.colour & 4) {
+			if (bBank == TRACK_BANK_NONE)
+				bBank = TRACK_BANK_UPSIDE_DOWN;
+			else if (bBank == TRACK_BANK_UPSIDE_DOWN)
+				bBank = TRACK_BANK_NONE;
+		}
+	}
+
+	return aBank == bBank && aAngle == bAngle;
+}
+
+/* Based on rct2: 0x006D2897 */
+int copy_scenery_to_track(uint8** track_pointer){
+	rct_track_scenery* track_scenery = (rct_track_scenery*)(*track_pointer - 1);
+	rct_track_scenery* scenery_source = RCT2_ADDRESS(0x009DA193, rct_track_scenery);
+
+	while (1){
+		int ebx = 0;
+		memcpy(track_scenery, scenery_source, sizeof(rct_track_scenery));
+		if ((track_scenery->scenery_object.flags & 0xFF) == 0xFF) break;
+
+		//0x00F4414D is direction of track?
+		if ((track_scenery->scenery_object.flags & 0xF) == OBJECT_TYPE_PATHS){
+
+			uint8 slope = (track_scenery->flags & 0x60) >> 5;
+			slope -= RCT2_GLOBAL(0x00F4414D, uint8);
+
+			track_scenery->flags &= 0x9F;
+			track_scenery->flags |= ((slope & 3) << 5);
+
+			// Direction of connection on path
+			uint8 direction = track_scenery->flags & 0xF;
+			// Rotate the direction by the track direction
+			direction = ((direction << 4) >> RCT2_GLOBAL(0x00F4414D, uint8));
+
+			track_scenery->flags &= 0xF0;
+			track_scenery->flags |= (direction & 0xF) | (direction >> 4);
+
+		}
+		else if ((track_scenery->scenery_object.flags & 0xF) == OBJECT_TYPE_WALLS){
+			uint8 direction = track_scenery->flags & 3;
+
+			direction -= RCT2_GLOBAL(0x00F4414D, uint8);
+
+			track_scenery->flags &= 0xFC;
+			track_scenery->flags |= (direction & 3);
+		}
+		else {
+			uint8 direction = track_scenery->flags & 3;
+			uint8 quadrant = (track_scenery->flags & 0xC) >> 2;
+
+			direction -= RCT2_GLOBAL(0x00F4414D, uint8);
+			quadrant -= RCT2_GLOBAL(0x00F4414D, uint8);
+
+			track_scenery->flags &= 0xF0;
+			track_scenery->flags |= (direction & 3) | ((quadrant & 3) << 2);
+		}
+		int x = track_scenery->x * 32 - RCT2_GLOBAL(0x00F44142, sint16);
+		int y = track_scenery->y * 32 - RCT2_GLOBAL(0x00F44144, sint16);
+
+		switch (RCT2_GLOBAL(0x00F4414D, uint8)){
+		case 0:
+			break;
+		case 1:
+		{
+			int temp_y = y;
+			y = x;
+			x = -temp_y;
+		}
+			break;
+		case 2:
+			x = -x;
+			y = -y;
+			break;
+		case 3:
+		{
+			int temp_x = x;
+			x = y;
+			y = -temp_x;
+		}
+			break;
+		}
+
+		x /= 32;
+		y /= 32;
+
+		if (x > 127 || y > 127 || x < -126 || y < -126){
+			window_error_open(3346, 3347);
+			return 0;
+		}
+
+		track_scenery->x = x;
+		track_scenery->y = y;
+
+		int z = track_scenery->z * 8 - RCT2_GLOBAL(0xF44146, sint16);
+
+		z /= 8;
+
+		if (z > 127 || z < -126){
+			window_error_open(3346, 3347);
+			return 0;
+		}
+
+		track_scenery->z = z;
+
+		track_scenery++;
+		scenery_source++;
+	}
+
+	*track_pointer = (uint8*)track_scenery;
+	//Skip end of scenery elements byte
+	(*track_pointer)++;
+	return 1;
+}
+
+/* rct2: 0x006D2804 & 0x006D264D */
+int save_track_design(uint8 rideIndex){
+	rct_ride* ride = GET_RIDE(rideIndex);
+
+	if (!(ride->lifecycle_flags & RIDE_LIFECYCLE_TESTED)){
+		window_error_open(3346, RCT2_GLOBAL(0x141E9AC, rct_string_id));
+		return 0;
+	}
+
+	if (ride->ratings.excitement == 0xFFFF){
+		window_error_open(3346, RCT2_GLOBAL(0x141E9AC, rct_string_id));
+		return 0;
+	}
+
+	if (!ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_HAS_TRACK)) {
+		window_error_open(3346, RCT2_GLOBAL(0x141E9AC, rct_string_id));
+		return 0;
+	}
+
+	if (RCT2_CALLPROC_X(0x006CE44F, 0, 0, 0, rideIndex, 0, 0, 0) & 0x100){
+		window_error_open(3346, RCT2_GLOBAL(0x141E9AC, rct_string_id));
+		return 0;
+	}
+
+	uint8* track_pointer = RCT2_GLOBAL(0x00F44058, uint8*);
+	if (RCT2_GLOBAL(0x009DEA6F, uint8) & 1){
+		if (!copy_scenery_to_track(&track_pointer))
+			return 0;
+	}
+
+	while (track_pointer < RCT2_ADDRESS(0x009DE217, uint8))*track_pointer++ = 0;
+
+	char track_name[MAX_PATH];
+	// Get track name
+	format_string(track_name, ride->name, &ride->name_arguments);
+
+	char path[MAX_PATH];
+	subsitute_path(path, RCT2_ADDRESS(RCT2_ADDRESS_TRACKS_PATH, char), track_name);
+
+	strcat(path, ".TD6");
+
+	// Save track design
+	format_string(RCT2_ADDRESS(0x141ED68, char), 2306, NULL);
+
+	// Track design files
+	format_string(RCT2_ADDRESS(0x141EE68, char), 2305, NULL);
+
+	pause_sounds();
+
+	int result = platform_open_common_file_dialog(
+		0, 
+		RCT2_ADDRESS(0x141ED68, char), 
+		path, 
+		"*.TD?", 
+		RCT2_ADDRESS(0x141EE68, char));
+
+	unpause_sounds();
+
+	if (result == 0){
+		ride_list_item item = { .type = 0xFD, .entry_index = 0 };
+		track_load_list(item);
+		return 1;
+	}
+
+	// Until 0x006771DC is finished we required to copy the path name.
+	strcpy(RCT2_ADDRESS(0x141EF68, char), path);
+	// This is the function that actually saves the track to a file
+	RCT2_CALLPROC_EBPSAFE(0x006771DC);
+
+	ride_list_item item = { .type = 0xFC, .entry_index = 0 };
+	track_load_list(item);
+	gfx_invalidate_screen();
+	return 1;
+}
+
+/**
+*
+*  rct2: 0x006D399D
+*/
+rct_track_design *temp_track_get_info(char* path, uint8** preview)
+{
+	rct_track_design *trackDesign;
+	uint8 *trackDesignList = RCT2_ADDRESS(RCT2_ADDRESS_TRACK_LIST, uint8);
+	int i;
+
+	trackDesign = NULL;
+
+	// Check if track design has already been loaded
+	for (i = 0; i < 4; i++) {
+		if (RCT2_ADDRESS(RCT2_ADDRESS_TRACK_DESIGN_INDEX_CACHE, uint32)[i] == 0) {
+			trackDesign = &RCT2_GLOBAL(RCT2_ADDRESS_TRACK_DESIGN_CACHE, rct_track_design*)[i];
+			break;
+		}
+	}
+
+	if (trackDesign == NULL) {
+		// Load track design
+		i = RCT2_GLOBAL(RCT2_ADDRESS_TRACK_DESIGN_NEXT_INDEX_CACHE, uint32)++;
+		if (RCT2_GLOBAL(RCT2_ADDRESS_TRACK_DESIGN_NEXT_INDEX_CACHE, uint32) >= 4)
+			RCT2_GLOBAL(RCT2_ADDRESS_TRACK_DESIGN_NEXT_INDEX_CACHE, uint32) = 0;
+
+		RCT2_ADDRESS(RCT2_ADDRESS_TRACK_DESIGN_INDEX_CACHE, uint32)[i] = 0;
+
+		rct_track_td6* loaded_track = NULL;
+
+		log_verbose("Loading track: %s", path);
+
+		if (!(loaded_track = load_track_design(path))) {
+			if (preview != NULL) *preview = NULL;
+			log_error("Failed to load track: %s", path);
+			return NULL;
+		}
+
+		trackDesign = &RCT2_GLOBAL(RCT2_ADDRESS_TRACK_DESIGN_CACHE, rct_track_design*)[i];
+
+		object_unload_all();
+		if (loaded_track->type == RIDE_TYPE_NULL){
+			if (preview != NULL) *preview = NULL;
+			log_error("Failed to load track (ride type null): %s", path);
+			return NULL;
+		}
+
+		if (!object_load(0, &loaded_track->vehicle_object, NULL)){
+			if (preview != NULL) *preview = NULL;
+			log_error("Failed to load track (vehicle load fail): %s", path);
+			return NULL;
+		}
+
+		// Copy the track design apart from the preview image
+		memcpy(&trackDesign->track_td6, loaded_track, sizeof(rct_track_td6));
+		// Load in a new preview image, calculate cost variable, calculate var_06
+		draw_track_preview((uint8**)trackDesign->preview);
+		//RCT2_CALLPROC_X(0x006D1EF0, 0, 0, 0, 0, 0, (int)&trackDesign->preview, 0);
+
+		trackDesign->track_td6.cost = RCT2_GLOBAL(RCT2_ADDRESS_TRACK_DESIGN_COST, money32);
+		trackDesign->track_td6.var_06 = RCT2_GLOBAL(0x00F44151, uint8) & 7;
+	}
+
+	// Set preview to correct preview image based on rotation
+	if (preview != NULL)
+		*preview = trackDesign->preview[RCT2_GLOBAL(RCT2_ADDRESS_TRACK_PREVIEW_ROTATION, uint8)];
+
+	return trackDesign;
+}
+
+void window_track_list_format_name(char *dst, const char *src, char colour, char quotes)
+{
+	if (colour != 0)
+		*dst++ = colour;
+
+	if (quotes != 0)
+		*dst++ = FORMAT_OPENQUOTES;
+
+	while (*src != '.' && *src != 0) {
+		*dst++ = *src++;
+	}
+
+	if (quotes != 0)
+		*dst++ = FORMAT_ENDQUOTES;
+
+	*dst = 0;
+}
+
+
+/**
+*
+*  rct2: 0x006D40B2
+* returns 0 for copy fail, 1 for success, 2 for file exists.
+*/
+int install_track(char* source_path, char* dest_name){
+
+	// Make a copy of the track name (no extension)
+	char track_name[MAX_PATH] = { 0 };
+	char* dest = track_name;
+	char* dest_name_pointer = dest_name;
+	while (*dest_name_pointer != '.') *dest++ = *dest_name_pointer++;
+
+	// Check if .TD4 file exists under that name
+	char* temp_extension_pointer = dest;
+	strcat(track_name, ".TD4");
+
+	char dest_path[MAX_PATH];
+	subsitute_path(dest_path, RCT2_ADDRESS(RCT2_ADDRESS_TRACKS_PATH, char), track_name);
+
+	if (platform_file_exists(dest_path))
+		return 2;
+
+	// Allow a concat onto the track_name but before extension
+	*temp_extension_pointer = '\0';
+
+	// Check if .TD6 file exists under that name
+	strcat(track_name, ".TD6");
+
+	subsitute_path(dest_path, RCT2_ADDRESS(RCT2_ADDRESS_TRACKS_PATH, char), track_name);
+
+	if (platform_file_exists(dest_path))
+		return 2;
+
+	// Set path for actual copy
+	subsitute_path(dest_path, RCT2_ADDRESS(RCT2_ADDRESS_TRACKS_PATH, char), dest_name);
+
+	return platform_file_copy(source_path, dest_path);
 }

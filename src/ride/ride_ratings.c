@@ -49,23 +49,9 @@ static void ride_ratings_update_state_4();
 static void ride_ratings_update_state_5();
 static void loc_6B5BB2();
 static void ride_ratings_calculate(rct_ride *ride);
-static void ride_ratings_reliability_calculate(rct_ride *ride);
+static void ride_ratings_calculate_value(rct_ride *ride);
 
 static int sub_6C6402(rct_map_element *mapElement, int *x, int *y, int *z)
-{
-	int eax, ebx, ecx, edx, esi, edi, ebp;
-
-	eax = *x;
-	ecx = *y;
-	esi = (int)mapElement;
-	RCT2_CALLFUNC_X(0x006C6402, &eax, &ebx, &ecx, &edx, &esi, &edi, &ebp);
-	*x = *((uint16*)&eax);
-	*y = *((uint16*)&ecx);
-	*z = *((uint8*)&edx);
-	return 1;
-}
-
-static int sub_6C60C2(rct_map_element *mapElement, int *x, int *y, int *z)
 {
 	int eax, ebx, ecx, edx, esi, edi, ebp;
 
@@ -217,13 +203,13 @@ static void loc_6B5BB2()
  */
 static void ride_ratings_update_state_2()
 {
-	// sub_6C6402 returns a carry, CALLFUNC doesn't support this
-	// so have to wait for sub_6C60C2 to be decompiled
+	// TODO test this function
 	RCT2_CALLPROC_EBPSAFE(0x006B5C66);
 	return;
 
 	rct_ride *ride;
 	rct_map_element *mapElement;
+	rct_xy_element trackElement, nextTrackElement;
 	int x, y, z, trackType, entranceIndex;
 
 	ride = GET_RIDE(_rideRatingsCurrentRide);
@@ -255,13 +241,18 @@ static void ride_ratings_update_state_2()
 			
 			RCT2_CALLPROC_X(0x006B5F9D, 0, 0, 0, 0, (int)mapElement, 0, 0);
 
-			x = RCT2_GLOBAL(0x0138B584, uint16);
-			y = RCT2_GLOBAL(0x0138B586, uint16);
-			if (!sub_6C60C2(mapElement, &x, &y, &z)) {
+			trackElement.x = RCT2_GLOBAL(0x0138B584, uint16);
+			trackElement.y = RCT2_GLOBAL(0x0138B586, uint16);
+			trackElement.element = mapElement;
+			if (!track_get_next(&trackElement, &nextTrackElement)) {
 				_rideRatingsState = RIDE_RATINGS_STATE_4;
 				return;
 			}
 
+			x = nextTrackElement.x;
+			y = nextTrackElement.y;
+			z = nextTrackElement.element->base_height * 8;
+			mapElement = nextTrackElement.element;
 			if (x == RCT2_GLOBAL(0x0138B58A, uint16) && y == RCT2_GLOBAL(0x0138B58C, uint16) && z == RCT2_GLOBAL(0x0138B58E, uint16)) {
 				_rideRatingsState = RIDE_RATINGS_STATE_CALCULATE;
 				return;
@@ -292,7 +283,7 @@ static void ride_ratings_update_state_3()
 
 	ride_ratings_calculate(ride);
 	RCT2_CALLPROC_X(0x00655F64, 0, 0, 0, 0, 0, (int)ride, 0);
-	ride_ratings_reliability_calculate(ride);
+	ride_ratings_calculate_value(ride);
 
 	window_invalidate_by_number(WC_RIDE, _rideRatingsCurrentRide);
 	_rideRatingsState = RIDE_RATINGS_STATE_FIND_NEXT_RIDE;
@@ -381,7 +372,7 @@ static void ride_ratings_calculate(rct_ride *ride)
 	}
 }
 
-static void ride_ratings_reliability_calculate(rct_ride *ride)
+static void ride_ratings_calculate_value(rct_ride *ride)
 {
 	rct_ride *ride2;
 	int i, otherRidesOfSameType;
@@ -389,7 +380,7 @@ static void ride_ratings_reliability_calculate(rct_ride *ride)
 	if (ride->excitement == (ride_rating)0xFFFF)
 		return;
 
-	int reliability =
+	int value =
 		(((ride->excitement * RCT2_GLOBAL(0x0097CD1E + (ride->type * 6), sint16)) * 32) >> 15) +
 		(((ride->intensity  * RCT2_GLOBAL(0x0097CD20 + (ride->type * 6), sint16)) * 32) >> 15) +
 		(((ride->nausea     * RCT2_GLOBAL(0x0097CD22 + (ride->type * 6), sint16)) * 32) >> 15);
@@ -398,19 +389,19 @@ static void ride_ratings_reliability_calculate(rct_ride *ride)
 
 	// New ride reward
 	if (monthsOld <= 12) {
-		reliability += 10;
+		value += 10;
 		if (monthsOld <= 4)
-			reliability += 20;
+			value += 20;
 	}
 
 	// Old ride penalty
-	if (monthsOld >= 40) reliability -= reliability / 4;
-	if (monthsOld >= 64) reliability -= reliability / 4;
+	if (monthsOld >= 40) value -= value / 4;
+	if (monthsOld >= 64) value -= value / 4;
 	if (monthsOld < 200) {
-		if (monthsOld >= 88) reliability -= reliability / 4;
-		if (monthsOld >= 104) reliability -= reliability / 4;
-		if (monthsOld >= 120) reliability -= reliability / 2;
-		if (monthsOld >= 128) reliability -= reliability / 2;
+		if (monthsOld >= 88) value -= value / 4;
+		if (monthsOld >= 104) value -= value / 4;
+		if (monthsOld >= 120) value -= value / 2;
+		if (monthsOld >= 128) value -= value / 2;
 	}
 
 	// Other ride of same type penalty
@@ -420,9 +411,9 @@ static void ride_ratings_reliability_calculate(rct_ride *ride)
 			otherRidesOfSameType++;
 	}
 	if (otherRidesOfSameType > 1)
-		reliability -= reliability / 4;
+		value -= value / 4;
 
-	ride->reliability = max(0, reliability);
+	ride->value = max(0, value);
 }
 
 /**
@@ -445,7 +436,7 @@ static uint16 ride_compute_upkeep(rct_ride *ride)
 	dl = dl & 3;
 	upkeep += trackCost * dl;
 
-	uint32 totalLength = (ride->length[0] + ride->length[1] + ride->length[2] + ride->length[3]) >> 16;
+	uint32 totalLength = ride_get_total_length(ride) >> 16;
 
 	// The data originally here was 20's and 0's. The 20's all represented
 	// rides that had tracks. The 0's were fixed rides like crooked house or
@@ -502,11 +493,11 @@ static uint16 ride_compute_upkeep(rct_ride *ride)
 
 	if (ride->mode == RIDE_MODE_REVERSE_INCLINE_LAUNCHED_SHUTTLE) {
 		upkeep += 30;
-	} else if (ride->mode == RIDE_MODE_POWERED_LAUNCH) {
+	} else if (ride->mode == RIDE_MODE_POWERED_LAUNCH_PASSTROUGH) {
 		upkeep += 160;
 	} else if (ride->mode == RIDE_MODE_LIM_POWERED_LAUNCH) {
 		upkeep += 320;
-	} else if (ride->mode == RIDE_MODE_POWERED_LAUNCH_35 || 
+	} else if (ride->mode == RIDE_MODE_POWERED_LAUNCH || 
 			ride->mode == RIDE_MODE_POWERED_LAUNCH_BLOCK_SECTIONED) {
 		upkeep += 220;
 	}
@@ -573,12 +564,16 @@ static void ride_ratings_apply_intensity_penalty(rating_tuple *ratings)
 }
 
 /**
- *
  *  rct2: 0x00655FD6
  */
-static void sub_655FD6(rct_ride *ride)
+static void set_unreliability_factor(rct_ride *ride)
 {
-    ride->var_198 += (ride->lift_hill_speed - RCT2_ADDRESS(0x0097D7C9, uint8)[ride->type * 4]) * 2;
+    // The higher the number, the lower the breakdown
+    // possibility. Range is [3, 7]. values are here:
+    // https://gist.github.com/kevinburke/123977c4884ccadbec70. Consider
+    // inlining this per ride
+	uint8 lift_speed_adjustment = RCT2_ADDRESS(0x0097D7C9, uint8)[ride->type * 4];
+    ride->unreliability_factor += (ride->lift_hill_speed - lift_speed_adjustment) * 2;
 }
 
 /**
@@ -604,17 +599,179 @@ static int sub_65E72D(rct_ride *ride)
 	return edx & 0xFFFF;
 }
 
+static rating_tuple get_var_10E_rating(rct_ride* ride) {
+	int var_10E_unk_1 = get_var_10E_unk_1(ride);
+	int var_10E_unk_2 = get_var_10E_unk_2(ride);
+	int var_10E_unk_3 = get_var_10E_unk_3(ride);
+
+	int excitement = (var_10E_unk_1 * 0x28000) >> 16;
+	excitement += var_10E_unk_2 * 3;
+	excitement += (var_10E_unk_3 * 63421) >> 16;
+
+	int intensity = (var_10E_unk_1 * 81920) >> 16;
+	intensity += (var_10E_unk_2 * 49152) >> 16;
+	intensity += (var_10E_unk_3 * 21140) >> 16;
+
+	int nausea = var_10E_unk_1 * 5;
+	nausea += (var_10E_unk_2 * 0x3200) >> 16;
+	nausea += (var_10E_unk_3 * 42281) >> 16;
+
+	rating_tuple rating = { excitement, intensity, nausea };
+	return rating;
+}
+
 /**
+ * rct2: 0x0065DF72
+ */
+static rating_tuple get_var_110_rating(rct_ride* ride) {
+	int var_10E_unk_1 = get_var_10E_unk_1(ride);
+	int var_10E_unk_2 = get_var_10E_unk_2(ride);
+	int var_10E_unk_3 = get_var_10E_unk_3(ride);
+
+	int excitement = (var_10E_unk_1 * 0x3c000) >> 16;
+	excitement += (var_10E_unk_2 * 0x3c000) >> 16;
+	excitement += (var_10E_unk_3 * 73992) >> 16;
+
+	int intensity = (var_10E_unk_1 * 0x14000) >> 16;
+	intensity += (var_10E_unk_2 * 49152) >> 16;
+	intensity += (var_10E_unk_3 * 21140) >> 16;
+
+	int nausea = var_10E_unk_1 * 5;
+	nausea += (var_10E_unk_2 * 0x32000) >> 16;
+	nausea += (var_10E_unk_3 * 48623) >> 16;
+
+	rating_tuple rating = { excitement, intensity, nausea };
+	return rating;
+}
+
+/**
+ * rct2: 0x0065E047
+ */
+static rating_tuple get_var_112_rating(rct_ride *ride) {
+	int al;
+
+	al = get_var_112_unk_1(ride);
+	al = min(al, 4);
+	int excitement = (al * 0x78000) >> 16;
+
+	al = get_var_112_unk_1(ride);
+	al = min(al, 8);
+	int nausea = (al * 0x78000) >> 16;
+
+	al = get_var_112_unk_2(ride);
+	al = min(al, 6);
+	excitement += (al * 273066) >> 16;
+
+	al = get_var_112_unk_3(ride);
+	al = min(al, 6);
+	excitement += (al * 0x3aaaa) >> 16;
+
+	al = get_var_112_unk_4(ride);
+	al = min(al, 7);
+	excitement += (al * 187245) >> 16;
+
+	rating_tuple rating = { excitement, 0, nausea };
+	return rating;
+}
+
+/**
+ * rct2: 0x0065E0F2
+ */
+static rating_tuple get_inversions_ratings(uint8 inversions) {
+	inversions = inversions & 0x1F;
+
+	int a = min(inversions, 6);
+	int excitement = (a * 0x1aaaaa) >> 16;
+
+	int intensity = inversions * 5;
+	int nausea = (inversions * 0x15aaaa) >> 16;
+
+	rating_tuple rating = { excitement, intensity, nausea };
+	return rating;
+}
+
+/*
  *
+ */
+static rating_tuple get_special_track_elements_rating(uint8 type, rct_ride *ride) {
+	int excitement = 0, intensity = 0, nausea = 0;
+	if (type == RIDE_TYPE_GHOST_TRAIN) {
+		if (ride_has_spinning_tunnel(ride)) {
+			excitement += 40;
+			intensity  += 25;
+			nausea     += 55;
+		}
+	} else if (type == RIDE_TYPE_LOG_FLUME) {
+		// Reverser for log flume
+		if (ride_has_log_reverser(ride)) {
+			excitement += 48;
+			intensity  += 55;
+			nausea     += 65;
+		}
+	} else {
+		if (ride_has_water_splash(ride)) {
+			excitement += 50;
+			intensity  += 30;
+			nausea     += 20;
+		} 
+		if (ride_has_waterfall(ride)) {
+			excitement += 55;
+			intensity  += 30;
+		}
+		if (ride_has_whirlpool(ride)) {
+			excitement += 35;
+			intensity  += 20;
+			nausea     += 23;
+		}
+	}
+	uint8 helix_sections = ride_get_helix_sections(ride);
+	int al = min(helix_sections, 9);
+	excitement += (al * 254862) >> 16;
+
+	al = min(helix_sections, 11);
+	intensity += (al * 148945) >> 16;
+
+	al = max(helix_sections - 5, 0);
+	al = min(al, 10);
+	nausea += (al * 0x140000) >> 16;
+
+	rating_tuple rating = { excitement, intensity, nausea };
+	return rating;
+}
+
+/**
  *  rct2: 0x0065DDD1
  */
 static rating_tuple sub_65DDD1(rct_ride *ride)
 {
-	int eax, ebx, ecx, edx, esi, edi, ebp;
-	edi = (int)ride;
-	RCT2_CALLFUNC_X(0x0065DDD1, &eax, &ebx, &ecx, &edx, &esi, &edi, &ebp);
+	int excitement = 0, intensity = 0, nausea = 0;
 
-	rating_tuple rating = { ebx, ecx, ebp };
+	rating_tuple special_track_element_rating = get_special_track_elements_rating(ride->type, ride);
+	excitement += special_track_element_rating.excitement;
+	intensity  += special_track_element_rating.intensity;
+	nausea     += special_track_element_rating.nausea;
+
+	rating_tuple var_10E_rating = get_var_10E_rating(ride);
+	excitement += var_10E_rating.excitement;
+	intensity  += var_10E_rating.intensity;
+	nausea     += var_10E_rating.nausea;
+
+	rating_tuple var_110_rating = get_var_110_rating(ride);
+	excitement += var_110_rating.excitement;
+	intensity  += var_110_rating.intensity;
+	nausea     += var_110_rating.nausea;
+
+	rating_tuple var_112_rating = get_var_112_rating(ride);
+	excitement += var_112_rating.excitement;
+	intensity  += var_112_rating.intensity;
+	nausea     += var_112_rating.nausea;
+
+	rating_tuple inversions_rating = get_inversions_ratings(ride->inversions);
+	excitement += inversions_rating.excitement;
+	intensity  += inversions_rating.intensity;
+	nausea     += inversions_rating.nausea;
+
+	rating_tuple rating = { excitement, intensity, nausea };
 	return rating;
 }
 
@@ -658,7 +815,7 @@ static rating_tuple ride_ratings_get_gforce_ratings(rct_ride *ride)
 
 	// Apply lateral G force factor
 	result.excitement += (min(FIXED_2DP(1,50), ride->max_lateral_g) * 26214) >> 16;
-	result.intensity += (ride->max_lateral_g * 65536) >> 16;
+	result.intensity += ride->max_lateral_g;
 	result.nausea += (ride->max_lateral_g * 21845) >> 16;
 
 	// Very high lateral G force penalty
@@ -761,16 +918,16 @@ static void ride_ratings_calculate_mine_train_coaster(rct_ride *ride)
 	if (!(ride->lifecycle_flags & RIDE_LIFECYCLE_TESTED))
 		return;
 	
-	ride->var_198 = 16;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 16;
+	set_unreliability_factor(ride);
 
 	// Base ratings
-	ratings.excitement =	RIDE_RATING(2,90);
-	ratings.intensity =		RIDE_RATING(2,30);
-	ratings.nausea =		RIDE_RATING(2,10);
+	ratings.excitement = RIDE_RATING(2,90);
+	ratings.intensity  = RIDE_RATING(2,30);
+	ratings.nausea     = RIDE_RATING(2,10);
 
 	// Apply length of ride factor
-	totalLength = (ride->length[0] + ride->length[1] + ride->length[2] + ride->length[3]) >> 16;
+	totalLength = ride_get_total_length(ride) >> 16;
 	ratings.excitement += (min(6000, totalLength) * 764) >> 16;
 
 	// Apply racing coaster factor
@@ -865,7 +1022,7 @@ static void ride_ratings_calculate_mine_train_coaster(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= sub_65E72D(ride) << 5;
@@ -877,8 +1034,8 @@ static void ride_ratings_calculate_maze(rct_ride *ride)
 
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_TESTED;
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_NO_RAW_STATS;
-	ride->var_198 = 8;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 8;
+	set_unreliability_factor(ride);
 
 	// Base ratings
 	ratings.excitement =	RIDE_RATING(1,30);
@@ -888,7 +1045,7 @@ static void ride_ratings_calculate_maze(rct_ride *ride)
 	// Apply size factor
 	int unk = min(ride->maze_tiles, 100);
 	ratings.excitement += unk;
-	ratings.intensity += unk / 2;
+	ratings.intensity += unk * 2;
 	
 	ratings.excitement += (ride_ratings_get_scenery_score(ride) * 22310) >> 16;
 
@@ -898,7 +1055,7 @@ static void ride_ratings_calculate_maze(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 0 << 5;
@@ -910,8 +1067,8 @@ static void ride_ratings_calculate_spiral_slide(rct_ride *ride)
 
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_TESTED;
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_NO_RAW_STATS;
-	ride->var_198 = 8;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 8;
+	set_unreliability_factor(ride);
 
 	// Base ratings
 	ratings.excitement =	RIDE_RATING(1,50);
@@ -933,7 +1090,7 @@ static void ride_ratings_calculate_spiral_slide(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 2 << 5;
@@ -945,8 +1102,8 @@ static void ride_ratings_calculate_pirate_ship(rct_ride *ride)
 
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_TESTED;
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_NO_RAW_STATS;
-	ride->var_198 = 10;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 10;
+	set_unreliability_factor(ride);
 
 	// Base ratings
 	ratings.excitement =	RIDE_RATING(1,50);
@@ -965,7 +1122,7 @@ static void ride_ratings_calculate_pirate_ship(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 0 << 5;
@@ -977,8 +1134,8 @@ static void ride_ratings_calculate_inverter_ship(rct_ride *ride)
 
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_TESTED;
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_NO_RAW_STATS;
-	ride->var_198 = 16;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 16;
+	set_unreliability_factor(ride);
 
 	// Base ratings
 	ratings.excitement =	RIDE_RATING(2,50);
@@ -997,7 +1154,7 @@ static void ride_ratings_calculate_inverter_ship(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 0 << 5;
@@ -1006,19 +1163,19 @@ static void ride_ratings_calculate_inverter_ship(rct_ride *ride)
 static void ride_ratings_calculate_food_stall(rct_ride *ride)
 {
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 }
 
 static void ride_ratings_calculate_drink_stall(rct_ride *ride)
 {
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 }
 
 static void ride_ratings_calculate_shop(rct_ride *ride)
 {
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 }
 
 static void ride_ratings_calculate_merry_go_round(rct_ride *ride)
@@ -1027,8 +1184,8 @@ static void ride_ratings_calculate_merry_go_round(rct_ride *ride)
 
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_TESTED;
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_NO_RAW_STATS;
-	ride->var_198 = 16;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 16;
+	set_unreliability_factor(ride);
 
 	int unk = ride->var_0D0 * 5;
 	ratings.excitement	= unk + RIDE_RATING(0,60) + ((ride_ratings_get_scenery_score(ride) * 19521) >> 16);
@@ -1041,7 +1198,7 @@ static void ride_ratings_calculate_merry_go_round(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 7 << 5;
@@ -1050,13 +1207,13 @@ static void ride_ratings_calculate_merry_go_round(rct_ride *ride)
 static void ride_ratings_calculate_information_kiosk(rct_ride *ride)
 {
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 }
 
 static void ride_ratings_calculate_bathroom(rct_ride *ride)
 {
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 }
 
 static void ride_ratings_calculate_ferris_wheel(rct_ride *ride)
@@ -1065,8 +1222,8 @@ static void ride_ratings_calculate_ferris_wheel(rct_ride *ride)
 
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_TESTED;
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_NO_RAW_STATS;
-	ride->var_198 = 16;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 16;
+	set_unreliability_factor(ride);
 
 	int unk = ride->var_0D0 * 25;
 	ratings.excitement	= unk + RIDE_RATING(0,60) + ((ride_ratings_get_scenery_score(ride) * 41831) >> 16);
@@ -1079,7 +1236,7 @@ static void ride_ratings_calculate_ferris_wheel(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 0 << 5;
@@ -1091,8 +1248,8 @@ static void ride_ratings_calculate_motion_simulator(rct_ride *ride)
 
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_TESTED;
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_NO_RAW_STATS;
-	ride->var_198 = 21;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 21;
+	set_unreliability_factor(ride);
 
 	// Base ratings
 	if (ride->mode == RIDE_MODE_FILM_THRILL_RIDERS) {
@@ -1111,7 +1268,7 @@ static void ride_ratings_calculate_motion_simulator(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 7 << 5;
@@ -1123,8 +1280,8 @@ static void ride_ratings_calculate_3d_cinema(rct_ride *ride)
 
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_TESTED;
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_NO_RAW_STATS;
-	ride->var_198 = 21;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 21;
+	set_unreliability_factor(ride);
 
 	// Base ratings
 	switch (ride->mode) {
@@ -1152,7 +1309,7 @@ static void ride_ratings_calculate_3d_cinema(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 7 << 5;
@@ -1164,8 +1321,8 @@ static void ride_ratings_calculate_top_spin(rct_ride *ride)
 
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_TESTED;
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_NO_RAW_STATS;
-	ride->var_198 = 19;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 19;
+	set_unreliability_factor(ride);
 
 	// Base ratings
 	switch (ride->mode) {
@@ -1195,7 +1352,7 @@ static void ride_ratings_calculate_top_spin(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 0 << 5;
@@ -1207,8 +1364,8 @@ static void ride_ratings_calculate_space_rings(rct_ride *ride)
 
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_TESTED;
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_NO_RAW_STATS;
-	ride->var_198 = 7;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 7;
+	set_unreliability_factor(ride);
 
 	// Base ratings
 	ratings.excitement	= RIDE_RATING(1,50);
@@ -1223,7 +1380,7 @@ static void ride_ratings_calculate_space_rings(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 0 << 5;
@@ -1237,8 +1394,8 @@ static void ride_ratings_calculate_elevator(rct_ride *ride)
 	if (!(ride->lifecycle_flags & RIDE_LIFECYCLE_TESTED))
 		return;
 
-	ride->var_198 = 15;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 15;
+	set_unreliability_factor(ride);
 
 	// Base ratings
 	ratings.excitement	= RIDE_RATING(1,11);
@@ -1246,11 +1403,11 @@ static void ride_ratings_calculate_elevator(rct_ride *ride)
 	ratings.nausea		= RIDE_RATING(0,30);
 
 	// Apply length factor
-	totalLength = ride->length[0] + ride->length[1] + ride->length[2] + ride->length[3];
-	ratings.excitement += ((totalLength >> 16) * 45875) >> 16;
+	totalLength = ride_get_total_length(ride) >> 16;
+	ratings.excitement += (totalLength * 45875) >> 16;
 	ratings.excitement += (sub_65E277() * 11183) >> 16;
 	ratings.excitement += (ride_ratings_get_scenery_score(ride) * 83662) >> 16;
-	ratings.nausea += ((totalLength >> 16) * 26214) >> 16;
+	ratings.nausea += (totalLength * 26214) >> 16;
 
 	ride_ratings_apply_intensity_penalty(&ratings);
 	ride_ratings_apply_adjustments(ride, &ratings);
@@ -1258,7 +1415,7 @@ static void ride_ratings_calculate_elevator(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 7 << 5;
@@ -1270,7 +1427,7 @@ static void ride_ratings_calculate_elevator(rct_ride *ride)
 static void ride_ratings_calculate_atm(rct_ride *ride)
 {
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 }
 
 static void ride_ratings_calculate_twist(rct_ride *ride)
@@ -1279,8 +1436,8 @@ static void ride_ratings_calculate_twist(rct_ride *ride)
 
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_TESTED;
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_NO_RAW_STATS;
-	ride->var_198 = 16;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 16;
+	set_unreliability_factor(ride);
 
 	// Base ratings
 	ratings.excitement	= RIDE_RATING(1,13);
@@ -1299,7 +1456,7 @@ static void ride_ratings_calculate_twist(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 0 << 5;
@@ -1311,8 +1468,8 @@ static void ride_ratings_calculate_haunted_house(rct_ride *ride)
 
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_TESTED;
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_NO_RAW_STATS;
-	ride->var_198 = 8;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 8;
+	set_unreliability_factor(ride);
 
 	ratings.excitement	= RIDE_RATING(3,41);
 	ratings.intensity	= RIDE_RATING(1,53);
@@ -1324,7 +1481,7 @@ static void ride_ratings_calculate_haunted_house(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 0xE0;
@@ -1339,8 +1496,8 @@ static void ride_ratings_calculate_mini_golf(rct_ride *ride)
 	if (!(ride->lifecycle_flags & RIDE_LIFECYCLE_TESTED))
 		return;
 
-	ride->var_198 = 0;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 0;
+	set_unreliability_factor(ride);
 
 	// Base ratings
 	ratings.excitement =	RIDE_RATING(1,50);
@@ -1348,7 +1505,7 @@ static void ride_ratings_calculate_mini_golf(rct_ride *ride)
 	ratings.nausea =		RIDE_RATING(0,00);
 
 	// Apply length factor
-	int length = (ride->length[0] + ride->length[1] + ride->length[2] + ride->length[3]) >> 16;
+	int length = ride_get_total_length(ride) >> 16;
 	ratings.excitement += (min(6000, length) * 873) >> 16;
 
 	// Apply ?
@@ -1382,7 +1539,7 @@ static void ride_ratings_calculate_mini_golf(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= sub_65E72D(ride) << 5;
@@ -1391,7 +1548,7 @@ static void ride_ratings_calculate_mini_golf(rct_ride *ride)
 static void ride_ratings_calculate_first_aid(rct_ride *ride)
 {
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 }
 
 static void ride_ratings_calculate_circus_show(rct_ride *ride)
@@ -1400,8 +1557,8 @@ static void ride_ratings_calculate_circus_show(rct_ride *ride)
 
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_TESTED;
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_NO_RAW_STATS;
-	ride->var_198 = 9;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 9;
+	set_unreliability_factor(ride);
 
 	ratings.excitement	= RIDE_RATING(2,10);
 	ratings.intensity	= RIDE_RATING(0,30);
@@ -1413,7 +1570,7 @@ static void ride_ratings_calculate_circus_show(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 7 << 5;
@@ -1425,8 +1582,8 @@ static void ride_ratings_calculate_crooked_house(rct_ride *ride)
 
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_TESTED;
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_NO_RAW_STATS;
-	ride->var_198 = 5;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 5;
+	set_unreliability_factor(ride);
 
 	ratings.excitement	= RIDE_RATING(2,15);
 	ratings.intensity	= RIDE_RATING(0,62);
@@ -1438,7 +1595,7 @@ static void ride_ratings_calculate_crooked_house(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 0xE0;
@@ -1450,8 +1607,8 @@ static void ride_ratings_calculate_magic_carpet(rct_ride *ride)
 
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_TESTED;
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_NO_RAW_STATS;
-	ride->var_198 = 16;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 16;
+	set_unreliability_factor(ride);
 
 	// Base ratings
 	ratings.excitement	= RIDE_RATING(2,45);
@@ -1470,7 +1627,7 @@ static void ride_ratings_calculate_magic_carpet(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 0 << 5;
@@ -1482,8 +1639,8 @@ static void ride_ratings_calculate_enterprise(rct_ride *ride)
 
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_TESTED;
 	ride->lifecycle_flags |= RIDE_LIFECYCLE_NO_RAW_STATS;
-	ride->var_198 = 22;
-	sub_655FD6(ride);
+	ride->unreliability_factor = 22;
+	set_unreliability_factor(ride);
 
 	// Base ratings
 	ratings.excitement	= RIDE_RATING(3,60);
@@ -1502,7 +1659,7 @@ static void ride_ratings_calculate_enterprise(rct_ride *ride)
 	ride->ratings = ratings;
 
 	ride->upkeep_cost = ride_compute_upkeep(ride);
-	ride->var_14D |= 2;
+	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_INCOME;
 
 	ride->inversions &= 0x1F;
 	ride->inversions |= 3 << 5;

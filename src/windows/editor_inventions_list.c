@@ -19,13 +19,13 @@
 *****************************************************************************/
 
 #include "../addresses.h"
+#include "../cursors.h"
 #include "../input.h"
 #include "../interface/widget.h"
 #include "../interface/window.h"
 #include "../localisation/localisation.h"
 #include "../management/research.h"
 #include "../object.h"
-#include "../platform/osinterface.h"
 #include "../world/scenery.h"
 
 #pragma region Widgets
@@ -339,7 +339,7 @@ static rct_research_item *window_editor_inventions_list_get_item_from_scroll_y(i
 		researchItem++;
 	}
 
-	for (; researchItem->entryIndex != RESEARCHED_ITEMS_SEPERATOR || researchItem->entryIndex == RESEARCHED_ITEMS_END; researchItem++) {
+	for (; researchItem->entryIndex != RESEARCHED_ITEMS_SEPERATOR && researchItem->entryIndex != RESEARCHED_ITEMS_END; researchItem++) {
 		y -= 10;
 		if (y < 0)
 			return researchItem;
@@ -415,9 +415,7 @@ void window_editor_inventions_list_open()
 
 	sub_685901();
 
-	w = window_create(
-		(RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_WIDTH, uint16) - 600) / 2,
-		max(28, (RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_HEIGHT, uint16) - 400) / 2),
+	w = window_create_centred(
 		600,
 		400,
 		(uint32*)window_editor_inventions_list_events,

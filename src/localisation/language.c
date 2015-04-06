@@ -20,6 +20,7 @@
 
 #include "../addresses.h"
 #include "localisation.h"
+#include "../object.h"
 
 const char *language_names[LANGUAGE_COUNT] = {
 	"",					// LANGUAGE_UNDEFINED
@@ -31,7 +32,8 @@ const char *language_names[LANGUAGE_COUNT] = {
 	"Magyar",			// LANGUAGE_HUNGARIAN
 	"Polski",			// LANGUAGE_POLISH
 	"Espa\u00F1ol",		// LANGUAGE_SPANISH
-	"Svenska"			// LANGUAGE_SWEDISH
+	"Svenska",			// LANGUAGE_SWEDISH
+	"Italiano"			// LANGUAGE_ITALIAN
 };
 
 const char *language_filenames[LANGUAGE_COUNT] = {
@@ -44,7 +46,8 @@ const char *language_filenames[LANGUAGE_COUNT] = {
 	"hungarian",		// LANGUAGE_HUNGARIAN
 	"polish",			// LANGUAGE_POLISH
 	"spanish_sp",		// LANGUAGE_SPANISH
-	"swedish"			// LANGUAGE_SWEDISH
+	"swedish",			// LANGUAGE_SWEDISH
+	"italian"			// LANGUAGE_ITALIAN
 };
 
 int gCurrentLanguage = LANGUAGE_UNDEFINED;
@@ -81,10 +84,19 @@ static int utf8_get_next(char *char_ptr, char **nextchar_ptr)
 
 const char *language_get_string(rct_string_id id)
 {
-	const char *rct = RCT2_ADDRESS(0x009BF2D4, const char*)[id];
-	const char *openrct = language_strings == NULL ? NULL : language_strings[id];
-	const char *str = (openrct == NULL || strlen(openrct) == 0 ? rct : openrct);
-	return str == NULL ? "" : str;
+	if (id >= STR_OPENRCT2_BEGIN_STRING_ID) {
+		const char *openrct = language_strings == NULL ? NULL : language_strings[id];
+		if (openrct != NULL)
+			return openrct;
+
+		// TODO Fall back to another language or otherwise English (UK)
+		return "(undefined string)";
+	} else {
+		const char *rct = RCT2_ADDRESS(0x009BF2D4, const char*)[id];
+		const char *openrct = language_strings == NULL ? NULL : language_strings[id];
+		const char *str = (openrct == NULL || strlen(openrct) == 0 ? rct : openrct);
+		return str == NULL ? "" : str;
+	}
 }
 
 int language_open(int id)
@@ -127,7 +139,7 @@ static int language_open_file(const char *filename)
 		return 0;
 
 	fseek(f, 0, SEEK_END);
-	language_buffer_size = ftell(f);
+	language_buffer_size = ftell(f) + 1;
 	language_buffer = calloc(1, language_buffer_size);
 	fseek(f, 0, SEEK_SET);
 	fread(language_buffer, language_buffer_size, 1, f);
@@ -223,4 +235,83 @@ void language_close()
 	language_num_strings = 0;
 
 	gCurrentLanguage = LANGUAGE_UNDEFINED;
+}
+
+const int OpenRCT2LangIdToObjectLangId[] = {
+	0, 0, 1, 3, 6, 2, 0, 0, 4, 7, 5
+};
+
+/* rct2: 0x0098DA16 */
+uint16 ObjectTypeStringTableCount[] = { 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3 };
+
+/* rct2: 0x006A9E24*/
+rct_string_id object_get_localised_text(uint8_t** pStringTable/*ebp*/, int type/*ecx*/, int index/*ebx*/, int tableindex/*edx*/)
+{
+	char* pString = NULL;
+	int result = 0;
+	while (true)
+	{
+		uint8_t language_code = *(*pStringTable)++;
+		
+		if (language_code == 0xFF) //end of string table
+			break;
+
+		// This is the ideal situation. Language found
+		if (language_code == OpenRCT2LangIdToObjectLangId[gCurrentLanguage])//1)
+		{
+			pString = *pStringTable;
+			result |= 1;
+		}
+
+		// Just in case always load english into pString
+		if (language_code == 0 && !(result & 1))
+		{
+			pString = *pStringTable;
+			result |= 2;
+		}
+
+		// Failing that fall back to whatever is first string
+		if (!(result & 7))
+		{
+			pString = *pStringTable;
+			result |= 4;
+		}
+
+		// Skip over the actual string entry to get to the next
+		// entry
+		while (*(*pStringTable)++ != 0);
+	}
+
+	// If not scenario text
+	if (RCT2_GLOBAL(0x9ADAFC, uint8_t) == 0)
+	{
+		int stringid = 3463;
+		for (int i = 0; i < type; i++)
+		{
+			int nrobjects = object_entry_group_counts[i];
+			int nrstringtables = ObjectTypeStringTableCount[i];
+			stringid += nrobjects * nrstringtables;
+		}
+		stringid += index * ObjectTypeStringTableCount[type];
+		// Used by the object list to allocate name in plugin.dat
+		RCT2_GLOBAL(RCT2_ADDRESS_CURR_OBJECT_BASE_STRING_ID, uint32) = stringid;
+		stringid += tableindex;
+
+		//put pointer in stringtable
+		language_strings[stringid] = pString;
+		// Until all string related functions are finished copy
+		// to old array as well.
+		RCT2_ADDRESS(0x009BF2D4, char*)[stringid] = pString;
+		return stringid;
+	}
+	else
+	{
+		int stringid = 3447 + tableindex;
+		//put pointer in stringtable
+		language_strings[stringid] = pString;
+		// Until all string related functions are finished copy
+		// to old array as well.
+		RCT2_ADDRESS(0x009BF2D4, char*)[stringid] = pString;
+		return stringid;
+	}
 }

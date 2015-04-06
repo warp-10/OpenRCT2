@@ -22,6 +22,7 @@
     <ClCompile Include="..\src\audio\mixer.cpp" />
     <ClCompile Include="..\src\cmdline.c" />
     <ClCompile Include="..\src\config.c" />
+    <ClCompile Include="..\src\cursors.c" />
     <ClCompile Include="..\src\diagnostic.c" />
     <ClCompile Include="..\src\drawing\drawing.c" />
     <ClCompile Include="..\src\drawing\line.c" />
@@ -60,9 +61,9 @@
     <ClCompile Include="..\src\peep\staff.c" />
     <ClCompile Include="..\src\platform\shared.c" />
     <ClCompile Include="..\src\platform\unix.c" />
-    <ClCompile Include="..\src\platform\osinterface.c" />
     <ClCompile Include="..\src\platform\osx.c" />
     <ClCompile Include="..\src\platform\windows.c" />
+    <ClCompile Include="..\src\rct1.c" />
     <ClCompile Include="..\src\rct2.c" />
     <ClCompile Include="..\src\ride\ride.c" />
     <ClCompile Include="..\src\ride\ride_data.c" />
@@ -94,7 +95,9 @@
     <ClCompile Include="..\src\windows\footpath.c" />
     <ClCompile Include="..\src\windows\game_bottom_toolbar.c" />
     <ClCompile Include="..\src\windows\guest_list.c" />
+    <ClCompile Include="..\src\windows\install_track.c" />
     <ClCompile Include="..\src\windows\land.c" />
+    <ClCompile Include="..\src\windows\loadsave.c" />
     <ClCompile Include="..\src\windows\main.c" />
     <ClCompile Include="..\src\windows\map.c" />
     <ClCompile Include="..\src\windows\mapgen.c" />
@@ -123,6 +126,7 @@
     <ClCompile Include="..\src\windows\title_exit.c" />
     <ClCompile Include="..\src\windows\title_logo.c" />
     <ClCompile Include="..\src\windows\title_menu.c" />
+    <ClCompile Include="..\src\windows\title_options.c" />
     <ClCompile Include="..\src\windows\title_scenarioselect.c" />
     <ClCompile Include="..\src\windows\tooltip.c" />
     <ClCompile Include="..\src\windows\top_toolbar.c" />
@@ -137,8 +141,10 @@
     <ClCompile Include="..\src\world\fountain.c" />
     <ClCompile Include="..\src\world\map.c" />
     <ClCompile Include="..\src\world\mapgen.c" />
+    <ClCompile Include="..\src\world\map_animation.c" />
     <ClCompile Include="..\src\world\map_helpers.c" />
     <ClCompile Include="..\src\world\park.c" />
+    <ClCompile Include="..\src\world\scenery.c" />
     <ClCompile Include="..\src\world\sprite.c" />
   </ItemGroup>
   <ItemGroup>
@@ -178,7 +184,6 @@
     <ClInclude Include="..\src\openrct2.h" />
     <ClInclude Include="..\src\peep\peep.h" />
     <ClInclude Include="..\src\peep\staff.h" />
-    <ClInclude Include="..\src\platform\osinterface.h" />
     <ClInclude Include="..\src\platform\platform.h" />
     <ClInclude Include="..\src\rct1.h" />
     <ClInclude Include="..\src\rct2.h" />
@@ -197,17 +202,20 @@
     <ClInclude Include="..\src\util\util.h" />
     <ClInclude Include="..\src\windows\dropdown.h" />
     <ClInclude Include="..\src\windows\error.h" />
-    <ClInclude Include="..\src\windows\scenery.h" />
     <ClInclude Include="..\src\windows\tooltip.h" />
     <ClInclude Include="..\src\world\banner.h" />
     <ClInclude Include="..\src\world\climate.h" />
+    <ClInclude Include="..\src\world\entrance.h" />
     <ClInclude Include="..\src\world\footpath.h" />
+    <ClInclude Include="..\src\world\fountain.h" />
     <ClInclude Include="..\src\world\map.h" />
     <ClInclude Include="..\src\world\mapgen.h" />
+    <ClInclude Include="..\src\world\map_animation.h" />
     <ClInclude Include="..\src\world\map_helpers.h" />
     <ClInclude Include="..\src\world\park.h" />
     <ClInclude Include="..\src\world\scenery.h" />
     <ClInclude Include="..\src\world\sprite.h" />
+    <ClInclude Include="..\src\world\water.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="libs\libs.vcxproj">
@@ -285,6 +293,7 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;HAVE_CONFIG_H;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)fake\%(RelativeDir)</ObjectFileName>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

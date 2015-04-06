@@ -23,7 +23,7 @@
 #include "../config.h"
 #include "../interface/viewport.h"
 #include "../interface/window.h"
-#include "../platform/osinterface.h"
+#include "../platform/platform.h"
 #include "../world/map.h"
 #include "../world/sprite.h"
 #include "audio.h"
@@ -1329,7 +1329,7 @@ int dsound_create_primary_buffer(int a, int device, int channels, int samples, i
 		if (FAILED(DirectSoundCreate(&dsdevice->guid, &RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND), 0))) {
 			return 0;
 		}
-		if (FAILED(RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND)->lpVtbl->SetCooperativeLevel(RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND), RCT2_GLOBAL(0x009E2D70, HWND), DSSCL_NORMAL)) || 
+		if (FAILED(RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND)->lpVtbl->SetCooperativeLevel(RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND), windows_get_window_handle(), DSSCL_NORMAL)) || 
 			FAILED(RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND)->lpVtbl->CreateSoundBuffer(RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND), &bufferdesc, &RCT2_GLOBAL(0x009E2BA8, LPDIRECTSOUNDBUFFER), 0))) {
 			RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND)->lpVtbl->Release(RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND));
 			RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND) = 0;
@@ -1374,7 +1374,7 @@ int dsound_create_primary_buffer(int a, int device, int channels, int samples, i
 	if (FAILED(DirectSoundCreate(&dsdevice->guid, &RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND), 0))) {
 		return 0;
 	}
-	if (FAILED(RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND)->lpVtbl->SetCooperativeLevel(RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND), RCT2_GLOBAL(0x009E2D70, HWND), DSSCL_PRIORITY))) {
+	if (FAILED(RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND)->lpVtbl->SetCooperativeLevel(RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND), windows_get_window_handle(), DSSCL_PRIORITY))) {
 		RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND)->lpVtbl->Release(RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND));
 		RCT2_GLOBAL(RCT2_ADDRESS_DIRECTSOUND, LPDIRECTSOUND) = 0;
 		return 0;
@@ -1545,7 +1545,7 @@ void stop_completed_sounds()
 void start_title_music()
 {
 	int musicPathId;
-	switch (gGeneral_config.title_music) {
+	switch (gConfigSound.title_music) {
 	default:
 		return;
 	case 1:
@@ -1556,7 +1556,8 @@ void start_title_music()
 		break;
 	}
 
-	if ((RCT2_GLOBAL(0x009AF284, uint32) & (1 << 0)) && RCT2_GLOBAL(0x009AF59D, uint8) & 1 && RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & 1) {
+	if ((RCT2_GLOBAL(0x009AF284, uint32) & (1 << 0)) && RCT2_GLOBAL(0x009AF59D, uint8) & 1
+			&& RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_TITLE_DEMO) {
 		if (!RCT2_GLOBAL(0x009AF600, uint8)) {
 #ifdef USE_MIXER
 			gTitleMusicChannel = Mixer_Play_Music(musicPathId);
@@ -1702,13 +1703,10 @@ void audio_init1()
 	do {
 		rct_ride_music_info* ride_music_info = &RCT2_GLOBAL(0x009AF1C8, rct_ride_music_info*)[m];
 		const char* path = get_file_path(ride_music_info->pathid);
-		RCT2_GLOBAL(0x014241BC, uint32) = 3;
-		HANDLE hfile = osinterface_file_open(path);
-		RCT2_GLOBAL(0x014241BC, uint32) = 0;
-		if (hfile != INVALID_HANDLE_VALUE) {
-			RCT2_GLOBAL(0x014241BC, uint32) = 3;
-			osinterface_file_read(hfile, &RCT2_GLOBAL(0x009AF47E, uint32), 4);
-			osinterface_file_close(hfile);
+		FILE *file = fopen(path, "rb");
+		if (file != NULL) {
+			fread(&RCT2_GLOBAL(0x009AF47E, uint32), 4, 1, file);
+			fclose(file);
 			RCT2_GLOBAL(0x014241BC, uint32) = 0;
 			if (RCT2_GLOBAL(0x009AF47E, uint32) == 0x78787878) {
 				ride_music_info->var_0 = 0;
@@ -1754,7 +1752,7 @@ void audio_init2(int device)
 	rct_dsdevice dsdevice = RCT2_GLOBAL(RCT2_ADDRESS_DSOUND_DEVICES, rct_dsdevice*)[device];
 	RCT2_GLOBAL(RCT2_ADDRESS_DSOUND_GUID, GUID) = dsdevice.guid;
 	RCT2_GLOBAL(0x009AAC5C, uint8) = 1;
-	config_save();
+	config_save_default();
 	RCT2_GLOBAL(0x014241BC, uint32) = 1;
 	int successtimer = audio_create_timer();
 	RCT2_GLOBAL(0x014241BC, uint32) = 0;
@@ -1766,9 +1764,21 @@ void audio_init2(int device)
 		}
 	}
 	if (!(RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_FLAGS, uint8) & 1 << 4)) {
-		gSound_config.forced_software_buffering = RCT2_GLOBAL(0x001425B74, uint32) != RCT2_GLOBAL(0x001425B78, uint32) || RCT2_GLOBAL(0x001425B74, uint32) != RCT2_GLOBAL(0x001425B7C, uint32);
+		gConfigSound.forced_software_buffering = RCT2_GLOBAL(0x001425B74, uint32) != RCT2_GLOBAL(0x001425B78, uint32) || RCT2_GLOBAL(0x001425B74, uint32) != RCT2_GLOBAL(0x001425B7C, uint32);
 		RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_FLAGS, uint8) |= 1 << 4;
-		config_save();
+		config_save_default();
+	}
+
+	// When all sound code is reversed this can be removed.
+	if (!gConfigSound.sound){
+		toggle_all_sounds();
+	}
+
+	// When all sound code is reversed this can be removed.
+	if (!gConfigSound.ride_music){
+		RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_MUSIC, uint8) ^= 1;
+		if (RCT2_GLOBAL(RCT2_ADDRESS_CONFIG_MUSIC, uint8) == 0)
+			stop_ride_music();
 	}
 }
 
@@ -1796,19 +1806,34 @@ void audio_close()
 	}
 }
 
+/* rct2: 0x006BAB8A */
+void toggle_all_sounds(){
+	// When all sound code is reversed replace with gConfigSound.sound
+	RCT2_GLOBAL(0x009AF59D, uint8) ^= 1;
+	if (RCT2_GLOBAL(0x009AF59D, uint8) == 0) {
+		stop_title_music();
+		pause_sounds();
+	}
+	else{
+		unpause_sounds();
+	}
+}
+
 /**
 *
 *  rct2: 0x006BABB4
 */
 void pause_sounds()
 {
-	if (++RCT2_GLOBAL(0x009AF59C, uint8) == 1) {
+	// When all sound code is reversed replace with gConfigSound.sound
+	RCT2_GLOBAL(0x009AF59C, uint8) = 1;
+	if (RCT2_GLOBAL(0x009AF59C, uint8) == 1) {
 		stop_other_sounds();
 		stop_vehicle_sounds();
 		stop_ride_music();
 		stop_crowd_sound();
 	}
-	g_sounds_disabled = 1;
+	gConfigSound.sound = 0;
 }
 
 /**
@@ -1817,8 +1842,9 @@ void pause_sounds()
 */
 void unpause_sounds()
 {
-	RCT2_GLOBAL(0x009AF59C, uint8)--;
-	g_sounds_disabled = 0;
+	// When all sound code is reversed replace with gConfigSound.sound
+	RCT2_GLOBAL(0x009AF59C, uint8) = 0;
+	gConfigSound.sound = 1;
 }
 
 /**

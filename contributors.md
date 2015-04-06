@@ -11,7 +11,7 @@ Includes all git commit authors. Aliases are GitHub user names.
 ## Implementation (RCT2)
 * Ted John (IntelOrca)
 * Duncan Frost (duncanspumpkin)
-* Peter Hill (ZedFree) - String handling, misc.
+* Peter Hill (ZedThree) - String handling, misc.
 * (qcz) - Scenery window, misc.
 * Matthias Lanzinger (lnz) - Climate, finance, scenario, ride reachability
 * (zsilencer) - Audio, misc.
@@ -19,6 +19,7 @@ Includes all git commit authors. Aliases are GitHub user names.
 * (hexdec) - Misc.
 * Dennis Devriendt (ddevrien) - Misc.
 * Maciek Baron (MaciekBaron) - Misc.
+* Michael Steenbeek (Gymnasiast) - Cheats and misc. features
 * (AngeloG) - Scrollbar input, misc.
 * (jcdavis) - Misc.
 * (marcotc) - Rain drawing, misc.
@@ -48,7 +49,7 @@ Includes all git commit authors. Aliases are GitHub user names.
 * (Balletie) - OSX
 * Kevin Burke (kevinburke) - OSX, Unix
 * Miso Zmiric (mzmiric5) - OSX
-* (JarnoVgr) - Windows build server
+* Jarno Veuger (JarnoVgr) - Windows build server
 * Ted John (IntelOrca) - Windows
 
 ## Documentation
@@ -67,6 +68,9 @@ Includes all git commit authors. Aliases are GitHub user names.
 * Dutch - Michael Steenbeek (Gymnasiast), (hostbrute), (mrtnptrs), (xzbobzx)
 * Spanish - (mdtrooper)
 * Swedish - (Jinxit), (mharrys)
+
+## Graphics
+* OpenRCT2 Logo - xzbobzx
 
 ## RollerCoaster Tycoon 2 credits
 Design and programming by Chris Sawyer

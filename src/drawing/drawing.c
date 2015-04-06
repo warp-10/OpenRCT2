@@ -22,8 +22,9 @@
 #include "../common.h"
 #include "../localisation/localisation.h"
 #include "../interface/window.h"
-#include "../platform/osinterface.h"
+#include "../platform/platform.h"
 #include "../object.h"
+#include "../world/water.h"
 #include "drawing.h"
 
 // HACK These were originally passed back through registers
@@ -147,17 +148,17 @@ void gfx_transpose_palette(int pal, unsigned char product)
 		source_pointer += 3;
 		dest_pointer += 4;
 	}
-	osinterface_update_palette((char*)0x01424680, 10, 236);
+	platform_update_palette((char*)0x01424680, 10, 236);
 }
 
 /* rct2: 0x006837E3 */
 void load_palette(){
-	uint8* water_chunk = object_entry_groups[OBJECT_TYPE_WATER].chunks[0];
+	rct_water_type* water_type = (rct_water_type*)object_entry_groups[OBJECT_TYPE_WATER].chunks[0];
 
 	uint32 palette = 0x5FC;
 
-	if (water_chunk != (uint8*)-1){
-		palette = *((uint32*)(water_chunk + 2));
+	if ((sint32)water_type != -1){
+		palette = water_type->image_id;
 	}
 
 	rct_g1_element g1 = RCT2_ADDRESS(RCT2_ADDRESS_G1_ELEMENTS, rct_g1_element)[palette];
@@ -173,7 +174,7 @@ void load_palette(){
 		source_pointer += 3;
 		dest_pointer += 4;
 	}
-	osinterface_update_palette((char*)0x01424680, 10, 236);
+	platform_update_palette((char*)0x01424680, 10, 236);
 }
 
 /**

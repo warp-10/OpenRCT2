@@ -100,13 +100,13 @@ static void* window_new_campaign_events[] = {
 uint8 window_new_campaign_rides[MAX_RIDES];
 uint8 window_new_campaign_shop_items[64];
 
-int ride_reliability_compare(const void *a, const void *b)
+int ride_value_compare(const void *a, const void *b)
 {
 	rct_ride *rideA, *rideB;
 
 	rideA = GET_RIDE(*((uint8*)a));
 	rideB = GET_RIDE(*((uint8*)b));
-	return rideB->reliability - rideA->reliability;
+	return rideB->value - rideA->value;
 }
 
 int ride_name_compare(const void *a, const void *b)
@@ -129,8 +129,6 @@ int ride_name_compare(const void *a, const void *b)
  */
 void window_new_campaign_open(sint16 campaignType)
 {
-	// RCT2_CALLPROC_X(0x0069E16F, campaignType, 0, 0, 0, 0, 0, 0);
-
 	rct_window *w;
 	rct_ride *ride;
 	int i, numApplicableRides;
@@ -175,19 +173,20 @@ void window_new_campaign_open(sint16 campaignType)
 	numApplicableRides = 0;
 	window_new_campaign_rides[0] = 255;
 	FOR_ALL_RIDES(i, ride) {
-		if (!(RCT2_GLOBAL(RCT2_ADDRESS_RIDE_FLAGS + (ride->type * 8), uint32) & 0x03820000))
+		if (!ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_IS_SHOP | RIDE_TYPE_FLAG_23 | RIDE_TYPE_FLAG_SELLS_DRINKS | RIDE_TYPE_FLAG_IS_BATHROOM))
 			window_new_campaign_rides[numApplicableRides++] = i;
 	}
-	window_new_campaign_rides[numApplicableRides] = 255;
 
 	// Take top 40 most reliable rides
 	if (numApplicableRides > 40) {
-		qsort(window_new_campaign_rides, countof(window_new_campaign_rides), sizeof(uint8), ride_reliability_compare);
+		qsort(window_new_campaign_rides, countof(window_new_campaign_rides), sizeof(uint8), ride_value_compare);
 		numApplicableRides = 40;
 	}
 
 	// Sort rides by name
 	qsort(window_new_campaign_rides, numApplicableRides, sizeof(uint8), ride_name_compare);
+
+	window_new_campaign_rides[numApplicableRides] = 255;
 }
 
 /**
@@ -280,28 +279,26 @@ static void window_new_campaign_mousedown(int widgetIndex, rct_window *w, rct_wi
 				);
 			}
 		} else {
-			if (window_new_campaign_rides[0] != 255) {
-				int numItems = 0;
-				for (int i = 0; i < 40; i++) {
-					if (window_new_campaign_rides[i] == 255)
-						break;
+			int numItems = 0;
+			for (int i = 0; i < 40; i++) {
+				if (window_new_campaign_rides[i] == 255)
+					break;
 
-					rct_ride *ride = GET_RIDE(window_new_campaign_rides[i]);
-					gDropdownItemsFormat[i] = 1142;
-					gDropdownItemsArgs[i] = (ride->name_arguments << 16) | ride->name;
-					numItems++;
-				}
-
-				window_dropdown_show_text_custom_width(
-					w->x + dropdownWidget->left,
-					w->y + dropdownWidget->top,
-					dropdownWidget->bottom - dropdownWidget->top + 1,
-					w->colours[1],
-					0x80,
-					numItems,
-					dropdownWidget->right - dropdownWidget->left - 3
-				);
+				rct_ride *ride = GET_RIDE(window_new_campaign_rides[i]);
+				gDropdownItemsFormat[i] = 1142;
+				gDropdownItemsArgs[i] = ((uint64)ride->name_arguments << 16ULL) | ride->name;
+				numItems++;
 			}
+
+			window_dropdown_show_text_custom_width(
+				w->x + dropdownWidget->left,
+				w->y + dropdownWidget->top,
+				dropdownWidget->bottom - dropdownWidget->top + 1,
+				w->colours[1],
+				0x80,
+				numItems,
+				dropdownWidget->right - dropdownWidget->left - 3
+			);
 		}
 		break;
 	case WIDX_WEEKS_INCREASE_BUTTON:

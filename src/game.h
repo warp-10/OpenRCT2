@@ -21,6 +21,8 @@
 #ifndef _GAME_H_
 #define _GAME_H_
 
+#include "common.h"
+
 enum GAME_COMMAND {
 	GAME_COMMAND_0,
 	GAME_COMMAND_1,
@@ -30,10 +32,10 @@ enum GAME_COMMAND {
 	GAME_COMMAND_LOAD_OR_QUIT, // 5
 	GAME_COMMAND_6,
 	GAME_COMMAND_7,
-	GAME_COMMAND_SET_RIDE_OPEN, // 8
+	GAME_COMMAND_SET_RIDE_STATUS, // 8
 	GAME_COMMAND_9,
 	GAME_COMMAND_SET_RIDE_NAME,
-	GAME_COMMAND_11,
+	GAME_COMMAND_SET_RIDE_SETTING,
 	GAME_COMMAND_12,
 	GAME_COMMAND_13,
 	GAME_COMMAND_REMOVE_SCENERY,
@@ -45,11 +47,11 @@ enum GAME_COMMAND {
 	GAME_COMMAND_CHANGE_SURFACE_STYLE, //20
 	GAME_COMMAND_21,
 	GAME_COMMAND_22, //To do with text input
-	GAME_COMMAND_23,
-	GAME_COMMAND_24,
-	GAME_COMMAND_25,
-	GAME_COMMAND_26,
-	GAME_COMMAND_27,
+	GAME_COMMAND_RAISE_LAND,
+	GAME_COMMAND_LOWER_LAND,
+	GAME_COMMAND_EDIT_LAND_SMOOTH,
+	GAME_COMMAND_RAISE_WATER,
+	GAME_COMMAND_LOWER_WATER,
 	GAME_COMMAND_28,
 	GAME_COMMAND_HIRE_NEW_STAFF_MEMBER, // 29
 	GAME_COMMAND_SET_STAFF_PATROL, //30
@@ -73,7 +75,7 @@ enum GAME_COMMAND {
 	GAME_COMMAND_START_MARKETING_CAMPAIGN, // 48
 	GAME_COMMAND_49,
 	GAME_COMMAND_50, // New banner? (possibly scenery)
-	GAME_COMMAND_51,
+	GAME_COMMAND_51, // Remove banner
 	GAME_COMMAND_52,
 	GAME_COMMAND_53,
 	GAME_COMMAND_54,
@@ -107,7 +109,10 @@ void game_reduce_game_speed();
 void game_load_or_quit_no_save_prompt();
 int game_load_save(const char *path);
 void game_pause_toggle(int *eax, int *ebx, int *ecx, int *edx, int *esi, int *edi, int *ebp);
+void pause_toggle();
 char save_game();
 void rct2_exit();
+void rct2_exit_reason(rct_string_id title, rct_string_id body);
+void game_autosave();
 
 #endif

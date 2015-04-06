@@ -1430,7 +1430,10 @@ static void window_finances_research_invalidate()
 	}
 
 	window_finances_set_pressed_tab(w);
-	
+	if (RCT2_GLOBAL(RCT2_ADDRESS_RESEARH_PROGRESS_STAGE, uint8) == RESEARCH_STAGE_FINISHED_ALL) {
+		window_finances_research_widgets[WIDX_RESEARCH_FUNDING].type = WWT_EMPTY;
+		window_finances_research_widgets[WIDX_RESEARCH_FUNDING_DROPDOWN_BUTTON].type = WWT_EMPTY;
+	}
 	int currentResearchLevel = RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_RESEARCH_LEVEL, uint8);
 
 	// Current funding
@@ -1510,8 +1513,8 @@ static void window_finances_set_page(rct_window *w, int page)
 		w->width = 530;
 		w->height = 257;
 	}
-	RCT2_CALLPROC_X(w->event_handlers[WE_RESIZE], 0, 0, 0, 0, (int)w, 0, 0);
-	RCT2_CALLPROC_X(w->event_handlers[WE_INVALIDATE], 0, 0, 0, 0, (int)w, 0, 0);
+	window_event_resize_call(w);
+	window_event_invalidate_call(w);
 
 	window_init_scroll_widgets(w);
 	window_invalidate(w);

@@ -678,6 +678,7 @@ const rct_ride_name_convention RideNameConvention[96] = {
 	{ 1229,    1243,    1257,       0 }
 };
 
+/* rct2: 0x0097C8AC */
 const uint8 RideAvailableModes[] = {
 	RIDE_MODE_CONTINUOUS_CIRCUIT, RIDE_MODE_CONTINUOUS_CIRCUIT_BLOCK_SECTIONED, 0xFF,																		// 00 Spiral Roller coaster
 	RIDE_MODE_CONTINUOUS_CIRCUIT, RIDE_MODE_CONTINUOUS_CIRCUIT_BLOCK_SECTIONED, 0xFF,																		// 01 Stand Up Coaster
@@ -694,11 +695,11 @@ const uint8 RideAvailableModes[] = {
 	RIDE_MODE_UPWARD_LAUNCH, RIDE_MODE_DOWNWARD_LAUNCH, 0xFF,																								// 0C Launched Freefall
 	RIDE_MODE_CONTINUOUS_CIRCUIT, RIDE_MODE_CONTINUOUS_CIRCUIT_BLOCK_SECTIONED, 0xFF,																		// 0D Bobsleigh Coaster
 	RIDE_MODE_ROTATING_LIFT, 0xFF,																															// 0E Observation Tower
-	RIDE_MODE_CONTINUOUS_CIRCUIT, RIDE_MODE_CONTINUOUS_CIRCUIT_BLOCK_SECTIONED, RIDE_MODE_REVERSE_INCLINE_LAUNCHED_SHUTTLE, RIDE_MODE_POWERED_LAUNCH, 0xFF,	// 0F Looping Roller Coaster
+	RIDE_MODE_CONTINUOUS_CIRCUIT, RIDE_MODE_CONTINUOUS_CIRCUIT_BLOCK_SECTIONED, RIDE_MODE_REVERSE_INCLINE_LAUNCHED_SHUTTLE, RIDE_MODE_POWERED_LAUNCH_PASSTROUGH, RIDE_MODE_POWERED_LAUNCH, 0xFF,	// 0F Looping Roller Coaster
 	RIDE_MODE_CONTINUOUS_CIRCUIT, 0xFF,																														// 10 Dinghy Slide
 	RIDE_MODE_CONTINUOUS_CIRCUIT, RIDE_MODE_CONTINUOUS_CIRCUIT_BLOCK_SECTIONED, 0xFF,																		// 11 Mine Train Coaster
 	RIDE_MODE_STATION_TO_STATION, 0xFF,																														// 12 Chairlift
-	RIDE_MODE_CONTINUOUS_CIRCUIT, RIDE_MODE_CONTINUOUS_CIRCUIT_BLOCK_SECTIONED, 0x23, 2, 0xFF,																// 13 Corkscrew Roller Coaster
+	RIDE_MODE_CONTINUOUS_CIRCUIT, RIDE_MODE_CONTINUOUS_CIRCUIT_BLOCK_SECTIONED, RIDE_MODE_POWERED_LAUNCH, RIDE_MODE_REVERSE_INCLINE_LAUNCHED_SHUTTLE, 0xFF,																// 13 Corkscrew Roller Coaster
 	RIDE_MODE_MAZE, 0xFF,																																	// 14 Maze
 	RIDE_MODE_SINGLE_RIDE_PER_ADMISSION, RIDE_MODE_UNLIMITED_RIDES_PER_ADMISSION, 0xFF,																		// 15 Spiral Slide
 	RIDE_MODE_RACE, RIDE_MODE_CONTINUOUS_CIRCUIT, 0xFF,																										// 16 Go Karts
@@ -752,9 +753,9 @@ const uint8 RideAvailableModes[] = {
 	RIDE_MODE_BUMPERCAR, 0xFF,																																// 46 Flying Saucers
 	RIDE_MODE_CROOKED_HOUSE, 0xFF,																															// 47 Crooked House
 	RIDE_MODE_CONTINUOUS_CIRCUIT, 0xFF,																														// 48 Monorail Cycles
-	RIDE_MODE_CONTINUOUS_CIRCUIT, RIDE_MODE_CONTINUOUS_CIRCUIT_BLOCK_SECTIONED, 2, 0xFF,																	// 49 Compact Inverted Coaster
+	RIDE_MODE_CONTINUOUS_CIRCUIT, RIDE_MODE_CONTINUOUS_CIRCUIT_BLOCK_SECTIONED, RIDE_MODE_REVERSE_INCLINE_LAUNCHED_SHUTTLE, 0xFF,																	// 49 Compact Inverted Coaster
 	RIDE_MODE_CONTINUOUS_CIRCUIT, RIDE_MODE_CONTINUOUS_CIRCUIT_BLOCK_SECTIONED, 0xFF,																		// 4A Water Coaster
-	RIDE_MODE_POWERED_LAUNCH, 0xFF,																															// 4B Air Powered Vertical Coaster
+	RIDE_MODE_POWERED_LAUNCH_PASSTROUGH, 0xFF,																															// 4B Air Powered Vertical Coaster
 	RIDE_MODE_CONTINUOUS_CIRCUIT, RIDE_MODE_CONTINUOUS_CIRCUIT_BLOCK_SECTIONED, 0xFF,																		// 4C Inverted Hairpin Coaster
 	RIDE_MODE_SWING, 0xFF,																																	// 4D Magic Carpet
 	RIDE_MODE_CONTINUOUS_CIRCUIT, 0xFF,																														// 4E Submarine Ride
@@ -765,11 +766,11 @@ const uint8 RideAvailableModes[] = {
 	RIDE_MODE_SHOP_STALL, 0xFF,																																// 53 (none)
 	RIDE_MODE_SHOP_STALL, 0xFF,																																// 54 (none)
 	RIDE_MODE_CONTINUOUS_CIRCUIT, 0xFF,																														// 55 (none)
-	RIDE_MODE_POWERED_LAUNCH, 0xFF,																															// 56 Inverted Impulse Coaster
+	RIDE_MODE_POWERED_LAUNCH_PASSTROUGH, 0xFF,																															// 56 Inverted Impulse Coaster
 	RIDE_MODE_CONTINUOUS_CIRCUIT, RIDE_MODE_CONTINUOUS_CIRCUIT_BLOCK_SECTIONED, 0xFF,																		// 57 Mini Roller Coaster
 	RIDE_MODE_CONTINUOUS_CIRCUIT, 0xFF,																														// 58 Mine Ride
 	RIDE_MODE_CONTINUOUS_CIRCUIT, RIDE_MODE_CONTINUOUS_CIRCUIT_BLOCK_SECTIONED, 0xFF,																		// 59 LIM Launched Roller Coaster
-	RIDE_MODE_POWERED_LAUNCH_35, RIDE_MODE_POWERED_LAUNCH_BLOCK_SECTIONED, 0xFF																				// 60 (none)
+	RIDE_MODE_POWERED_LAUNCH, RIDE_MODE_POWERED_LAUNCH_BLOCK_SECTIONED, 0xFF																				// 60 (none)
 };
 
 const uint8 RideAvailableBreakdowns[] = {
@@ -864,4 +865,19 @@ const uint8 RideAvailableBreakdowns[] = {
 	(1 << BREAKDOWN_SAFETY_CUT_OUT) | (1 << BREAKDOWN_RESTRAINTS_STUCK_CLOSED) | (1 << BREAKDOWN_RESTRAINTS_STUCK_OPEN) | (1 << BREAKDOWN_VEHICLE_MALFUNCTION),										// 58 Mine Ride
 	(1 << BREAKDOWN_SAFETY_CUT_OUT) | (1 << BREAKDOWN_RESTRAINTS_STUCK_CLOSED) | (1 << BREAKDOWN_RESTRAINTS_STUCK_OPEN) | (1 << BREAKDOWN_VEHICLE_MALFUNCTION) | (1 << BREAKDOWN_BRAKES_FAILURE),	// 59 LIM Launched Roller Coaster
 	(1 << BREAKDOWN_SAFETY_CUT_OUT) | (1 << BREAKDOWN_RESTRAINTS_STUCK_CLOSED) | (1 << BREAKDOWN_RESTRAINTS_STUCK_OPEN) | (1 << BREAKDOWN_VEHICLE_MALFUNCTION) | (1 << BREAKDOWN_BRAKES_FAILURE)	// 60 (none)
+};
+
+const rct_ride_entrance_definition RideEntranceDefinitions[12] = {
+	{ 22664, 32,  2 },		// RIDE_ENTRANCE_STYLE_PLAIN
+	{ 22760, 31, 21 },		// RIDE_ENTRANCE_STYLE_WOODEN
+	{ 22680, 43,  2 },		// RIDE_ENTRANCE_STYLE_CANVAS_TENT
+	{ 22728, 43, 19 },		// RIDE_ENTRANCE_STYLE_CASTLE_GREY
+	{ 22712, 33, 19 },		// RIDE_ENTRANCE_STYLE_CASTLE_BROWN
+	{ 22776, 32, 19 },		// RIDE_ENTRANCE_STYLE_JUNGLE
+	{ 22744, 32, 20 },		// RIDE_ENTRANCE_STYLE_LOG_CABIN
+	{ 22696, 34, 19 },		// RIDE_ENTRANCE_STYLE_CLASSICAL_ROMAN
+	{ 22792, 40, 22 },		// RIDE_ENTRANCE_STYLE_ABSTRACT
+	{ 22824, 35, 23 },		// RIDE_ENTRANCE_STYLE_SNOW_ICE
+	{ 22840, 33, 19 },		// RIDE_ENTRANCE_STYLE_PAGODA
+	{ 22856, 33,  2 }		// RIDE_ENTRANCE_STYLE_SPACE
 };

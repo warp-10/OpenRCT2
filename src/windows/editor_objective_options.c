@@ -254,9 +254,7 @@ void window_editor_objective_options_open()
 	if (w != NULL)
 		return;
 
-	w = window_create(
-		(RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_WIDTH, uint16) - 450) / 2,
-		max(28, (RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_HEIGHT, uint16) - 228) / 2),
+	w = window_create_centred(
 		450,
 		228,
 		(uint32*)window_objective_options_main_events,
@@ -837,7 +835,7 @@ static void window_editor_objective_options_main_invalidate()
 
 	window_get_register(w);
 
-	stex = RCT2_GLOBAL(0x009ADAE4, rct_stex_entry*);
+	stex = g_stexEntries[0];
 	if (stex == (rct_stex_entry*)0xFFFFFFFF)
 		stex = NULL;
 
@@ -922,7 +920,7 @@ static void window_editor_objective_options_main_paint()
 	window_draw_widgets(w, dpi);
 	window_editor_objective_options_draw_tab_images(w, dpi);
 
-	stex = RCT2_GLOBAL(0x009ADAE4, rct_stex_entry*);
+	stex = g_stexEntries[0];
 	if (stex == (rct_stex_entry*)0xFFFFFFFF)
 		stex = NULL;
 

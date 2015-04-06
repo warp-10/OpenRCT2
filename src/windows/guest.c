@@ -568,7 +568,7 @@ void window_guest_overview_resize(){
 	window_get_register(w);
 	
 	window_guest_disable_widgets(w);
-	RCT2_CALLPROC_X(w->event_handlers[WE_INVALIDATE], 0, 0, 0, 0, (int)w, 0, 0);
+	window_event_invalidate_call(w);
 	
 	widget_invalidate(w, WIDX_MARQUEE);
 	
@@ -676,10 +676,8 @@ void window_guest_set_page(rct_window* w, int page){
 	w->widgets = window_guest_page_widgets[page];
 	window_guest_disable_widgets(w);
 	window_invalidate(w);
-	
-	RCT2_CALLPROC_X(w->event_handlers[WE_RESIZE], 0, 0, 0, 0, (int)w, 0, 0);
-	RCT2_CALLPROC_X(w->event_handlers[WE_INVALIDATE], 0, 0, 0, 0, (int)w, 0, 0);
-	
+	window_event_resize_call(w);
+	window_event_invalidate_call(w);
 	window_init_scroll_widgets(w);
 	window_invalidate(w);
 	
@@ -768,7 +766,7 @@ void window_guest_viewport_init(rct_window* w){
 			viewport_flags |= VIEWPORT_FLAG_GRIDLINES;
 	}
 
-	RCT2_CALLPROC_X(w->event_handlers[WE_INVALIDATE], 0, 0, 0, 0, (int)w, 0, 0);
+	window_event_invalidate_call(w);
 
 	w->viewport_focus_coordinates.x = focus.coordinate.x;
 	w->viewport_focus_coordinates.y = focus.coordinate.y;
@@ -1235,8 +1233,8 @@ void window_guest_overview_tool_down(){
 	peep_window_state_update(peep);
 	peep->action = 0xFF;
 	peep->var_6D = 0;
-	peep->var_70 = 0;
-	peep->var_6E = 0xFF;
+	peep->action_sprite_image_offset = 0;
+	peep->action_sprite_type = 0xFF;
 	peep->var_C4 = 0;
 
 	peep->happiness_growth_rate -= 10;
@@ -1268,8 +1266,8 @@ void window_guest_overview_tool_abort(){
 		peep_window_state_update(peep);
 		peep->action = 0xFF;
 		peep->var_6D = 0;
-		peep->var_70 = 0;
-		peep->var_6E = 0;
+		peep->action_sprite_image_offset = 0;
+		peep->action_sprite_type = 0;
 		peep->var_C4 = 0;
 	}
 
@@ -2152,7 +2150,7 @@ void window_guest_inventory_paint(){
 		no_items++;
 
 		RCT2_GLOBAL(0x13CE952, uint32) = 5089 + i;
-		RCT2_GLOBAL(0x13CE956, uint16) = 2188;
+		RCT2_GLOBAL(0x13CE956, uint16) = 2188 + i;
 		RCT2_GLOBAL(0x13CE958, uint16) = RCT2_GLOBAL(0x13573D4, uint16);
 		RCT2_GLOBAL(0x13CE95A, uint32) = RCT2_GLOBAL(0x13573D8, uint32);
 

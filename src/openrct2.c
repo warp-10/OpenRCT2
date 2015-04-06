@@ -28,7 +28,6 @@
 #include "network/network.h"
 #include "openrct2.h"
 #include "platform/platform.h"
-#include "platform/osinterface.h"
 #include "util/sawyercoding.h"
 #include "world/mapgen.h"
 
@@ -40,12 +39,97 @@ int _finished;
 
 static void openrct2_loop();
 
+static void openrct2_copy_files_over(const char *originalDirectory, const char *newDirectory, const char *extension)
+{
+	char *ch, filter[MAX_PATH], oldPath[MAX_PATH], newPath[MAX_PATH];
+	int fileEnumHandle;
+	file_info fileInfo;
+	
+	if (!platform_ensure_directory_exists(newDirectory)) {
+		log_error("Could not create directory %s.", newDirectory);
+		return;
+	}
+
+	// Create filter path
+	strcpy(filter, originalDirectory);
+	ch = strchr(filter, '*');
+	if (ch != NULL)
+		*ch = 0;
+	strcat(filter, "*");
+	strcat(filter, extension);
+
+	fileEnumHandle = platform_enumerate_files_begin(filter);
+	while (platform_enumerate_files_next(fileEnumHandle, &fileInfo)) {
+		strcpy(newPath, newDirectory);
+		strcat(newPath, fileInfo.path);
+		
+		strcpy(oldPath, originalDirectory);
+		ch = strchr(oldPath, '*');
+		if (ch != NULL)
+			*ch = 0;
+		strcat(oldPath, fileInfo.path);
+
+		if (!platform_file_exists(newPath))
+			platform_file_copy(oldPath, newPath);
+	}
+	platform_enumerate_files_end(fileEnumHandle);
+
+	fileEnumHandle = platform_enumerate_directories_begin(originalDirectory);
+	while (platform_enumerate_directories_next(fileEnumHandle, filter)) {
+		strcpy(newPath, newDirectory);
+		strcat(newPath, filter);
+
+		strcpy(oldPath, originalDirectory);
+		ch = strchr(oldPath, '*');
+		if (ch != NULL)
+			*ch = 0;
+		strcat(oldPath, filter);
+
+		if (!platform_ensure_directory_exists(newPath)) {
+			log_error("Could not create directory %s.", newPath);
+			return;
+		}
+		openrct2_copy_files_over(oldPath, newPath, extension);
+	}
+	platform_enumerate_directories_end(fileEnumHandle);
+}
+
+/**
+ * Copy saved games and landscapes to user directory
+ */
+static void openrct2_copy_original_user_files_over()
+{
+	char path[MAX_PATH];
+
+	platform_get_user_directory(path, "save");
+	openrct2_copy_files_over((char*)RCT2_ADDRESS_SAVED_GAMES_PATH, path, ".sv6");
+
+	platform_get_user_directory(path, "landscape");
+	openrct2_copy_files_over((char*)RCT2_ADDRESS_LANDSCAPES_PATH, path, ".sc6");
+}
+
 /**
  * Launches the game, after command line arguments have been parsed and processed.
  */
 void openrct2_launch()
 {
-	config_load();
+	char userPath[MAX_PATH];
+
+	platform_get_user_directory(userPath, NULL);
+	if (!platform_ensure_directory_exists(userPath)) {
+		log_fatal("Could not create user directory (do you have write access to your documents folder?)");
+		return;
+	}
+
+	config_set_defaults();
+	if (!config_open_default()) {
+		if (!config_find_or_browse_install_directory()) {
+			log_fatal("An RCT2 install directory must be specified!");
+			return;
+		}
+	}
+
+	config_save_default();
 
 	// TODO add configuration option to allow multiple instances
 	// if (!platform_lock_single_instance()) {
@@ -57,9 +141,11 @@ void openrct2_launch()
 	audio_init();
 	audio_get_devices();
 	get_dsound_devices();
-	language_open(gGeneral_config.language);
+	language_open(gConfigGeneral.language);
 	if (!rct2_init())
 		return;
+
+	openrct2_copy_original_user_files_over();
 
 	Mixer_Init(NULL);
 
@@ -96,7 +182,7 @@ void openrct2_launch()
 	log_verbose("begin openrct2 loop");
 	openrct2_loop();
 	network_close();
-	osinterface_free();
+	platform_free();
 
 	// HACK Some threads are still running which causes the game to not terminate. Investigation required!
 	exit(gExitCode);
@@ -121,10 +207,10 @@ static void openrct2_loop()
 
 		lastTick = currentTick;
 
-		osinterface_process_messages();
+		platform_process_messages();
 		rct2_update();
 		network_update();
-		osinterface_draw();
+		platform_draw();
 	} while (!_finished);
 }
 

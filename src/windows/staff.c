@@ -332,9 +332,8 @@ void window_staff_open(rct_peep* peep)
 	window_staff_disable_widgets(w);
 	window_init_scroll_widgets(w);
 	window_staff_viewport_init(w);
-	if (g_sprite_list[w->number].peep.state == PEEP_STATE_PICKED) {
-		RCT2_CALLPROC_X(w->event_handlers[WE_MOUSE_UP], 0, 0, 0, 10, (int)w, 0, 0);
-	}
+	if (g_sprite_list[w->number].peep.state == PEEP_STATE_PICKED)
+		window_event_mouse_up_call(w, WIDX_CHECKBOX_3);
 }
 
 /**
@@ -421,8 +420,8 @@ void window_staff_set_page(rct_window* w, int page)
 	window_staff_disable_widgets(w);
 	window_invalidate(w);
 
-	RCT2_CALLPROC_X(w->event_handlers[WE_RESIZE], 0, 0, 0, 0, (int)w, 0, 0);
-	RCT2_CALLPROC_X(w->event_handlers[WE_INVALIDATE], 0, 0, 0, 0, (int)w, 0, 0);
+	window_event_resize_call(w);
+	window_event_invalidate_call(w);
 
 	window_init_scroll_widgets(w);
 	window_invalidate(w);
@@ -1158,8 +1157,8 @@ void window_staff_overview_tool_down(){
 		peep_window_state_update(peep);
 		peep->action = 0xFF;
 		peep->var_6D = 0;
-		peep->var_70 = 0;
-		peep->var_6E = 0;
+		peep->action_sprite_image_offset = 0;
+		peep->action_sprite_type = 0;
 		peep->var_C4 = 0;
 
 		tool_cancel();
@@ -1196,8 +1195,8 @@ void window_staff_overview_tool_abort(){
 			peep_window_state_update(peep);
 			peep->action = 0xFF;
 			peep->var_6D = 0;
-			peep->var_70 = 0;
-			peep->var_6E = 0;
+			peep->action_sprite_image_offset = 0;
+			peep->action_sprite_type = 0;
 			peep->var_C4 = 0;
 		}
 
@@ -1240,7 +1239,7 @@ void window_staff_overview_viewport_init_wrapper(){
 
 /* rct2: 0x006BEDA3 */
 void window_staff_viewport_init(rct_window* w){
-	RCT2_CALLPROC_X(0x006BEDA3, 0, 0, 0, 0, (int)w, 0, 0);
+	//RCT2_CALLPROC_X(0x006BEDA3, 0, 0, 0, 0, (int)w, 0, 0);
 
 	if (w->page != WINDOW_STAFF_OVERVIEW) return;
 
@@ -1279,7 +1278,7 @@ void window_staff_viewport_init(rct_window* w){
 			viewport_flags |= VIEWPORT_FLAG_GRIDLINES;
 	}
 
-	RCT2_CALLPROC_X(w->event_handlers[WE_INVALIDATE], 0, 0, 0, 0, (int)w, 0, 0);
+	window_event_invalidate_call(w);
 
 	w->viewport_focus_sprite.sprite_id = focus.sprite_id;
 	w->viewport_focus_sprite.type = focus.type;
@@ -1318,9 +1317,8 @@ void window_staff_options_mousedown(int widgetIndex, rct_window* w, rct_widget* 
 	init_scenery();
 
 	int ebx = 0;
-	for (int i = 0; i < 19;++i){
-		sint16* ebp = RCT2_ADDRESS(0xF64F2C, sint16*)[i];
-		if (*ebp != -1){
+	for (int i = 0; i < 19; i++) {
+		if (window_scenery_tab_entries[i][0] != -1) {
 			rct_scenery_set_entry* scenery_entry = g_scenerySetEntries[i];
 			ebx |= scenery_entry->var_10A;
 		}

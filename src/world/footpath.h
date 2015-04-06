@@ -23,24 +23,29 @@
 
 #include "../common.h"
 #include "../interface/viewport.h"
+#include "../object.h"
 
 enum {
 	PROVISIONAL_PATH_FLAG_SHOW_ARROW = (1 << 0)
 };
 
 typedef struct {
-	uint16 pad_00;
-	uint32 image;		// 0x02
-	uint32 pad_06;
-	uint8 pad_0A;
-	uint8 flags;		// 0x0B
+	rct_string_id string_idx;	// 0x00
+	uint32 image;				// 0x02
+	uint32 bridge_image;		// 0x06
+	uint8 var_0A;
+	uint8 flags;				// 0x0B
 } rct_path_type;
 
+#define g_pathTypeEntries ((rct_path_type**)object_entry_groups[OBJECT_TYPE_PATHS].chunks)
+
+void game_command_place_footpath(int *eax, int *ebx, int *ecx, int *edx, int *esi, int *edi, int *ebp);
+void game_command_remove_footpath(int *eax, int *ebx, int *ecx, int *edx, int *esi, int *edi, int *ebp);
 money32 footpath_place(int type, int x, int y, int z, int slope, int flags);
 void footpath_remove(int x, int y, int z, int flags);
 money32 footpath_provisional_set(int type, int x, int y, int z, int slope);
 void footpath_provisional_remove();
-void sub_6A7831();
+void footpath_provisional_update();
 void sub_68A0C9(int screenX, int screenY, int *x, int *y, int *direction, rct_map_element **mapElement);
 
 #endif

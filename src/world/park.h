@@ -35,7 +35,7 @@ enum {
 	PARK_FLAGS_FORBID_HIGH_CONSTRUCTION = (1 << 5), // below tree height
 	PARK_FLAGS_PREF_LESS_INTENSE_RIDES = (1 << 6),
 	PARK_FLAGS_FORBID_MARKETING_CAMPAIGN = (1 << 7),
-	PARK_FLAGS_PREF_MORE_INTENSE_RIDES = (1 << 8),
+	PARK_FLAGS_PREF_MORE_INTENSE_RIDES = (1 << 9),
 	PARK_FLAGS_NO_MONEY = (1 << 11),
 	PARK_FLAGS_DIFFICULT_GUEST_GENERATION = (1 << 12),
 	PARK_FLAGS_PARK_FREE_ENTRY = (1 << 13),
@@ -69,5 +69,7 @@ void game_command_set_park_entrance_fee(int *eax, int *ebx, int *ecx, int *edx, 
 void game_command_set_park_open(int *eax, int *ebx, int *ecx, int *edx, int *esi, int *edi, int *ebp);
 void game_command_remove_park_entrance(int *eax, int *ebx, int *ecx, int *edx, int *esi, int *edi, int *ebp);
 void game_command_set_park_name(int *eax, int *ebx, int *ecx, int *edx, int *esi, int *edi, int *ebp);
+
+void sub_6EC847(int x, int y, int z0, int z1);
 
 #endif

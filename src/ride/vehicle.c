@@ -858,7 +858,7 @@ static void vehicle_update_measurements(rct_vehicle *vehicle)
 	y = vehicle->y;
 
 	if (x == SPRITE_LOCATION_NULL){
-		ride->testing_flags &= ~RIDE_TESTING_FLAG_0;
+		ride->testing_flags &= ~RIDE_TESTING_SHELTERED;
 		return;
 	}
 
@@ -867,7 +867,7 @@ static void vehicle_update_measurements(rct_vehicle *vehicle)
 
 		for (;; map_element++){
 			if (map_element_is_last_for_tile(map_element)){
-				ride->testing_flags &= ~RIDE_TESTING_FLAG_0;
+				ride->testing_flags &= ~RIDE_TESTING_SHELTERED;
 				return;
 			}
 
@@ -886,28 +886,28 @@ static void vehicle_update_measurements(rct_vehicle *vehicle)
 		}
 	}
 
-	if (!(ride->testing_flags & RIDE_TESTING_FLAG_0)){
-		ride->testing_flags |= RIDE_TESTING_FLAG_0;
+	if (!(ride->testing_flags & RIDE_TESTING_SHELTERED)){
+		ride->testing_flags |= RIDE_TESTING_SHELTERED;
 
-		uint8 var_11E = ride->var_11E & 0x1F;
-		if (var_11E != 0x1F)
-			var_11E++;
-		ride->var_11E &= ~0x1F;
-		ride->var_11E |= var_11E;
+		uint8 num_sheltered_sections = ride->num_sheltered_sections & 0x1F;
+		if (num_sheltered_sections != 0x1F)
+			num_sheltered_sections++;
+		ride->num_sheltered_sections &= ~0x1F;
+		ride->num_sheltered_sections |= num_sheltered_sections;
 
 		if (vehicle->var_1F != 0){
-			ride->var_11E |= (1 << 5);
+			ride->num_sheltered_sections |= (1 << 5);
 		}
 
 		if (vehicle->var_20 != 0){
-			ride->var_11E |= (1 << 6);
+			ride->num_sheltered_sections |= (1 << 6);
 		}
 	}
 
 	sint32 distance = ((vehicle->velocity + vehicle->var_2C) / 1024) * 42;
 	if (distance < 0)return;
 
-	ride->var_118 += distance;
+	ride->sheltered_length += distance;
 }
 
 static uint16 sub_6D7AC0(int currentSoundId, int currentVolume, int targetSoundId, int targetVolume)

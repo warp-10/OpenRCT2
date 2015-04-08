@@ -70,10 +70,10 @@ typedef struct {
 	uint16 var_44;
 	uint16 var_46;
 	uint16 var_48;
-	uint8 pad_4A;
+	uint8 var_4A;
 	uint8 current_station;			// 0x4B
 	uint16 var_4C;
-	uint8 pad_4E[0x2];
+	uint16 var_4E;
 	uint8 status;					// 0x50
 	uint8 var_51;
 	uint16 peep[32];				// 0x52
@@ -81,9 +81,10 @@ typedef struct {
 	uint8 num_seats;				// 0xB2
 	uint8 num_peeps;				// 0xB3
 	uint8 next_free_seat;			// 0xB4
-	uint8 pad_B5[0x03];
+	uint8 var_B5;
+	sint16 var_B6;
 	uint16 var_B8;
-	uint8 pad_BA;
+	uint8 var_BA;
 	uint8 sound1_id;				// 0xBB
 	uint8 sound1_volume;			// 0xBC
 	uint8 sound2_id;				// 0xBD
@@ -92,6 +93,10 @@ typedef struct {
 	uint16 var_C0;
 	uint8 speed;					// 0xC2
 	uint8 pad_C3[0x09];
+	uint8 var_C5;
+	uint8 pad_C6[0x2];
+	uint16 var_C8;
+	uint8 pad_CA[0x2];
 	uint8 scream_sound_id;			// 0xCC
 	uint8 var_CD;
 	union {

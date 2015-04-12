@@ -92,7 +92,7 @@ typedef struct {
 	sint8 var_BF;
 	uint16 var_C0;
 	uint8 speed;					// 0xC2
-	uint8 pad_C3[0x09];
+	uint8 pad_C3[0x2];
 	uint8 var_C5;
 	uint8 pad_C6[0x2];
 	uint16 var_C8;

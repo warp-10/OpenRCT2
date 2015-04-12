@@ -366,7 +366,6 @@
     <ClCompile Include="..\src\world\footpath.c">
       <Filter>Source\World</Filter>
     </ClCompile>
-    <ClCompile Include="..\lib\lodepng\lodepng.c" />
     <ClCompile Include="..\src\diagnostic.c">
       <Filter>Source</Filter>
     </ClCompile>

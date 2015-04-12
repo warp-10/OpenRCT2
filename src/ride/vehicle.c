@@ -1372,7 +1372,6 @@ static void vehicle_update_waiting_for_passengers(rct_vehicle* vehicle){
 		}
 		else{
 			if (num_peeps_on_train == 0){
-				vehicle->var_48 |= (1 << 4);
 				train_ready_to_depart(vehicle, num_peeps_on_train, num_used_seats_on_train);
 				return;
 			}
@@ -1381,13 +1380,13 @@ static void vehicle_update_waiting_for_passengers(rct_vehicle* vehicle){
 		if (RCT2_ADDRESS(RCT2_ADDRESS_RIDE_FLAGS, uint32)[ride->type * 2] & RIDE_TYPE_FLAG_HAS_LOAD_OPTIONS){
 			if (ride->depart_flags & RIDE_DEPART_WAIT_FOR_MINIMUM_LENGTH){
 				if (ride->min_waiting_time * 32 > vehicle->var_C0){
-					vehicle->var_48 |= (1 << 4);
 					train_ready_to_depart(vehicle, num_peeps_on_train, num_used_seats_on_train);
 					return;
 				}
 			}
 			if (ride->depart_flags & RIDE_DEPART_WAIT_FOR_MAXIMUM_LENGTH){
 				if (ride->max_waiting_time * 32 < vehicle->var_C0){
+					vehicle->var_48 |= (1 << 4);
 					train_ready_to_depart(vehicle, num_peeps_on_train, num_used_seats_on_train);
 					return;
 				}
@@ -1409,6 +1408,7 @@ static void vehicle_update_waiting_for_passengers(rct_vehicle* vehicle){
 				if (train->status == VEHICLE_STATUS_UNLOADING_PASSENGERS ||
 					train->status == VEHICLE_STATUS_MOVING_TO_END_OF_STATION){
 					if (train->current_station == vehicle->current_station){
+						vehicle->var_48 |= (1 << 4);
 						train_ready_to_depart(vehicle, num_peeps_on_train, num_used_seats_on_train);
 						return;
 					}
@@ -1420,41 +1420,42 @@ static void vehicle_update_waiting_for_passengers(rct_vehicle* vehicle){
 			ride->depart_flags & RIDE_DEPART_WAIT_FOR_LOAD){
 
 			if (num_peeps_on_train == num_seats_on_train){
+				vehicle->var_48 |= (1 << 4);
 				train_ready_to_depart(vehicle, num_peeps_on_train, num_used_seats_on_train);
 				return;
 			}
 
 			uint8 load = ride->depart_flags & RIDE_DEPART_WAIT_FOR_LOAD_MASK;
 			if (load == 3){
-				vehicle->var_48 |= (1 << 4);
 				train_ready_to_depart(vehicle, num_peeps_on_train, num_used_seats_on_train);
 				return;
 			}
 
 			uint8 three_quater_seats = (3 * num_seats_on_train) / 4;
 			if (three_quater_seats != 0 && num_peeps_on_train >= three_quater_seats){
+				vehicle->var_48 |= (1 << 4);
 				train_ready_to_depart(vehicle, num_peeps_on_train, num_used_seats_on_train);
 				return;
 			}
 
 			if (load == 2){
-				vehicle->var_48 |= (1 << 4);
 				train_ready_to_depart(vehicle, num_peeps_on_train, num_used_seats_on_train);
 				return;
 			}
 
 			if (num_seats_on_train / 2 != 0 && num_peeps_on_train >= num_seats_on_train / 2){
-				train_ready_to_depart(vehicle, num_peeps_on_train, num_used_seats_on_train);
-				return;
-			}
-
-			if (load == 1){
 				vehicle->var_48 |= (1 << 4);
 				train_ready_to_depart(vehicle, num_peeps_on_train, num_used_seats_on_train);
 				return;
 			}
 
+			if (load == 1){
+				train_ready_to_depart(vehicle, num_peeps_on_train, num_used_seats_on_train);
+				return;
+			}
+
 			if (num_seats_on_train / 4 != 0 && num_peeps_on_train >= num_seats_on_train / 4){
+				vehicle->var_48 |= (1 << 4);
 				train_ready_to_depart(vehicle, num_peeps_on_train, num_used_seats_on_train);
 				return;
 			}
@@ -1467,9 +1468,9 @@ static void vehicle_update_waiting_for_passengers(rct_vehicle* vehicle){
 
 			if (num_peeps_on_train != 0){
 				vehicle->var_48 |= (1 << 4);
-				train_ready_to_depart(vehicle, num_peeps_on_train, num_used_seats_on_train);
-				return;
-			}
+			}				
+			train_ready_to_depart(vehicle, num_peeps_on_train, num_used_seats_on_train);
+			return;
 		}
 		vehicle->var_48 |= (1 << 4);
 		train_ready_to_depart(vehicle, num_peeps_on_train, num_used_seats_on_train);

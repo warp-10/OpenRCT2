@@ -1515,7 +1515,7 @@ static void peep_update_ride_sub_state_2(rct_peep* peep){
 
 	if (ride->status == RIDE_STATUS_OPEN &&
 		++peep->var_AC != 0 &&
-		!((GET_VEHICLE(ride->vehicles[peep->current_train]))->var_48 & (1 << 4)))
+		!((GET_VEHICLE(ride->vehicles[peep->current_train]))->update_flags & VEHICLE_UPDATE_FLAG_TRAIN_READY_DEPART))
 		return;
 	
 	if (ride->mode != RIDE_MODE_FORWARD_ROTATION &&

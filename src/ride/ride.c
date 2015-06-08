@@ -4437,7 +4437,7 @@ int get_turn_count_2_elements(rct_ride* ride, uint8 type) {
 		break;
 }
 
-	return (*turn_count >> 5) & TURN_MASK_2_ELEMENTS;
+	return ((*turn_count) & TURN_MASK_2_ELEMENTS) >> 5;
 }
 
 int get_turn_count_3_elements(rct_ride* ride, uint8 type) {
@@ -4454,7 +4454,7 @@ int get_turn_count_3_elements(rct_ride* ride, uint8 type) {
 		break;
 }
 
-	return (*turn_count >> 8) & TURN_MASK_3_ELEMENTS;
+	return ((*turn_count) & TURN_MASK_3_ELEMENTS) >> 8;
 }
 
 int get_turn_count_4_plus_elements(rct_ride* ride, uint8 type) {
@@ -4468,7 +4468,7 @@ int get_turn_count_4_plus_elements(rct_ride* ride, uint8 type) {
 		break;
 }
 
-	return (*turn_count >> 11) & TURN_MASK_4_PLUS_ELEMENTS;
+	return ((*turn_count) & TURN_MASK_4_PLUS_ELEMENTS) >> 11;
 }
 
 bool ride_has_spinning_tunnel(rct_ride *ride) {

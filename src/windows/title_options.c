@@ -19,10 +19,12 @@
  *****************************************************************************/
 
 #include "../addresses.h"
+#include "../config.h"
 #include "../game.h"
 #include "../localisation/localisation.h"
 #include "../interface/widget.h"
 #include "../interface/window.h"
+#include "../interface/themes.h"
 
 static rct_widget window_title_options_widgets[] = {
 	{ WWT_DROPDOWN_BUTTON, 2, 0, 79, 0, 11, STR_OPTIONS, STR_NONE },
@@ -32,6 +34,7 @@ static rct_widget window_title_options_widgets[] = {
 static void window_title_options_emptysub() {}
 static void window_title_options_paint();
 static void window_title_options_mouseup();
+static void window_title_options_invalidate();
 
 static void* window_title_options_events[] = {
 	window_title_options_emptysub,
@@ -59,7 +62,7 @@ static void* window_title_options_events[] = {
 	window_title_options_emptysub,
 	window_title_options_emptysub,
 	window_title_options_emptysub,
-	window_title_options_emptysub,
+	window_title_options_invalidate,
 	window_title_options_paint,
 	window_title_options_emptysub
 };
@@ -82,9 +85,6 @@ void window_title_options_open()
 	window->enabled_widgets |= 1;
 	window_init_scroll_widgets(window);
 	window->flags |= 16;
-	window->colours[0] = 140;
-	window->colours[1] = 140;
-	window->colours[2] = 140;
 }
 
 static void window_title_options_mouseup()
@@ -109,4 +109,11 @@ static void window_title_options_paint()
 	window_paint_get_registers(w, dpi);
 
 	window_draw_widgets(w, dpi);
+}
+
+static void window_title_options_invalidate()
+{
+	rct_window *w;
+	window_get_register(w);
+	colour_scheme_update(w);
 }

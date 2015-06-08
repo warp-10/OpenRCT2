@@ -64,12 +64,14 @@ extern uint8 text_palette[];
 extern int gLastDrawStringX;
 extern int gLastDrawStringY;
 
+extern rct_g1_element *g1Elements;
+
 // 
 rct_drawpixelinfo* clip_drawpixelinfo(rct_drawpixelinfo* dpi, int left, int width, int top, int height);
 void gfx_set_dirty_blocks(int left, int top, int right, int bottom);
 void gfx_draw_all_dirty_blocks();
 void gfx_redraw_screen_rect(short left, short top, short right, short bottom);
-void gfx_invalidate_scrollingtext(int x, int y, int base_height, int clearance_height);
+void gfx_invalidate_tile_if_zoomed(int x, int y, int base_height, int clearance_height);
 void gfx_invalidate_screen();
 
 // palette
@@ -90,6 +92,8 @@ void gfx_fill_rect_inset(rct_drawpixelinfo* dpi, short left, short top, short ri
 
 // sprite
 int gfx_load_g1();
+int gfx_load_g2();
+void sub_68371D();
 void gfx_bmp_sprite_to_buffer(uint8* palette_pointer, uint8* unknown_pointer, uint8* source_pointer, uint8* dest_pointer, rct_g1_element* source_image, rct_drawpixelinfo *dest_dpi, int height, int width, int image_type);
 void gfx_rle_sprite_to_buffer(uint8* source_bits_pointer, uint8* dest_bits_pointer, uint8* palette_pointer, rct_drawpixelinfo *dpi, int image_type, int source_y_start, int height, int source_x_start, int width);
 void gfx_draw_sprite(rct_drawpixelinfo *dpi, int image_id, int x, int y, uint32 tertiary_colour);

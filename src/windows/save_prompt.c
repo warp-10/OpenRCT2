@@ -28,6 +28,7 @@
 #include "../openrct2.h"
 #include "../sprites.h"
 #include "../tutorial.h"
+#include "../interface/themes.h"
 
 enum WINDOW_SAVE_PROMPT_WIDGET_IDX {
 	WIDX_BACKGROUND,
@@ -70,6 +71,7 @@ static rct_widget window_quit_prompt_widgets[] = {
 static void window_save_prompt_emptysub() { }
 static void window_save_prompt_close();
 static void window_save_prompt_mouseup();
+static void window_save_prompt_invalidate();
 static void window_save_prompt_paint();
 
 static void* window_save_prompt_events[] = {
@@ -98,7 +100,7 @@ static void* window_save_prompt_events[] = {
 	window_save_prompt_emptysub,
 	window_save_prompt_emptysub,
 	window_save_prompt_emptysub,
-	window_save_prompt_emptysub,
+	window_save_prompt_invalidate,
 	window_save_prompt_paint,
 	window_save_prompt_emptysub
 };
@@ -116,9 +118,11 @@ void window_save_prompt_open()
 	uint64 enabled_widgets;
 
 	prompt_mode = RCT2_GLOBAL(RCT2_ADDRESS_SAVE_PROMPT_MODE, uint16);
+	if (prompt_mode == PM_QUIT)
+		prompt_mode = PM_SAVE_BEFORE_QUIT;
 
 	// do not show save prompt if we're in the title demo and click on load game
-	if (prompt_mode != PM_QUIT && RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_TITLE_DEMO) {
+	if (RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_TITLE_DEMO) {
 		game_load_or_quit_no_save_prompt();
 		return;
 	}
@@ -129,7 +133,7 @@ void window_save_prompt_open()
 		window_close(window);
 	}
 
-	if (prompt_mode == PM_QUIT) {
+	if (RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & (SCREEN_FLAGS_TRACK_DESIGNER | SCREEN_FLAGS_TRACK_MANAGER)) {
 		widgets = window_quit_prompt_widgets;
 		enabled_widgets =
 			(1 << WQIDX_CLOSE) |
@@ -159,7 +163,6 @@ void window_save_prompt_open()
 	window->widgets = widgets;
 	window->enabled_widgets = enabled_widgets;
 	window_init_scroll_widgets(window);
-	window->colours[0] = 154;
 
 	// Pause the game
 	RCT2_GLOBAL(RCT2_ADDRESS_GAME_PAUSED, uint8) |= 2;
@@ -181,11 +184,6 @@ void window_save_prompt_open()
 		 * and game_load_or_quit() are not called by the original binary anymore.
 		 */
 		
-		if (RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & 0x0D) {
-			game_load_or_quit_no_save_prompt();
-			return;
-		}
-		
 		if (RCT2_GLOBAL(RCT2_ADDRESS_ON_TUTORIAL, uint8) != 0) {
 			if (RCT2_GLOBAL(RCT2_ADDRESS_ON_TUTORIAL, uint8) != 1) {
 				RCT2_CALLPROC_EBPSAFE(0x0066EE54);
@@ -203,7 +201,6 @@ void window_save_prompt_open()
 			return;
 		}
 	}
-	
 }
 
 /**
@@ -226,16 +223,13 @@ static void window_save_prompt_mouseup()
 {
 	short widgetIndex;
 	rct_window *w;
-	short prompt_mode;
 
 	window_widget_get_registers(w, widgetIndex);
 
-	prompt_mode = RCT2_GLOBAL(RCT2_ADDRESS_SAVE_PROMPT_MODE, uint16);
-
-	if (prompt_mode == PM_QUIT) {
+	if (RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & (SCREEN_FLAGS_TITLE_DEMO | SCREEN_FLAGS_TRACK_DESIGNER | SCREEN_FLAGS_TRACK_MANAGER)) {
 		switch (widgetIndex) {
 		case WQIDX_OK:
-			openrct2_finish();
+			game_load_or_quit_no_save_prompt();
 			break;
 		case WQIDX_CLOSE:
 		case WQIDX_CANCEL:
@@ -261,12 +255,6 @@ static void window_save_prompt_mouseup()
 			return;
 		}
 	}
-	
-
-	if (RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & 0x0D) {
-		game_load_or_quit_no_save_prompt();
-		return;
-	}
 
 	if (RCT2_GLOBAL(RCT2_ADDRESS_ON_TUTORIAL, uint8) != 0) {
 		if (RCT2_GLOBAL(RCT2_ADDRESS_ON_TUTORIAL, uint8) != 1) {
@@ -284,6 +272,14 @@ static void window_save_prompt_mouseup()
 		game_load_or_quit_no_save_prompt();
 		return;
 	}
+}
+
+static void window_save_prompt_invalidate()
+{
+	rct_window *w;
+
+	window_get_register(w);
+	colour_scheme_update(w);
 }
 
 static void window_save_prompt_paint()

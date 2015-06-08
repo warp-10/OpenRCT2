@@ -19,6 +19,7 @@
 *****************************************************************************/
 
 #include "../addresses.h"
+#include "../config.h"
 #include "../game.h"
 #include "../drawing/drawing.h"
 #include "../input.h"
@@ -30,6 +31,7 @@
 #include "../peep/staff.h"
 #include "../world/sprite.h"
 #include "dropdown.h"
+#include "../interface/themes.h"
 
 enum {
 	WINDOW_STAFF_LIST_TAB_HANDYMEN,
@@ -103,19 +105,19 @@ enum WINDOW_STAFF_LIST_WIDGET_IDX {
 };
 
 static rct_widget window_staff_list_widgets[] = {
-	{ WWT_FRAME, 0, 0, 319, 0, 269, 0x0FFFFFFFF, STR_NONE },							// panel / background
-	{ WWT_CAPTION, 0, 1, 318, 1, 14, STR_STAFF, STR_WINDOW_TITLE_TIP },					// title bar
-	{ WWT_CLOSEBOX, 0, 307, 317, 2, 13, STR_CLOSE_X, STR_CLOSE_WINDOW_TIP },			// close button
-	{ WWT_RESIZE, 1, 0, 319, 43, 269, 0x0FFFFFFFF, STR_NONE },							// tab content panel
-	{ WWT_TAB, 1, 3, 33, 17, 43, 0x02000144E, STR_STAFF_HANDYMEN_TAB_TIP },				// handymen tab
-	{ WWT_TAB, 1, 34, 64, 17, 43, 0x02000144E, STR_STAFF_MECHANICS_TAB_TIP },			// mechanics tab
-	{ WWT_TAB, 1, 65, 95, 17, 43, 0x02000144E, STR_STAFF_SECURITY_TAB_TIP },			// security guards tab
-	{ WWT_TAB, 1, 96, 126, 17, 43, 0x02000144E, STR_STAFF_ENTERTAINERS_TAB_TIP },		// entertainers tab
-	{ WWT_SCROLL, 1, 3, 316, 72, 266, 3, STR_NONE },									// staff list
-	{ WWT_COLORBTN, 1, 130, 141, 58, 69, STR_NONE, STR_UNIFORM_COLOUR_TIP },			// uniform color picker
-	{ WWT_DROPDOWN_BUTTON, 0, 165, 309, 17, 29, STR_NONE, STR_HIRE_STAFF_TIP },			// hire button
-	{ WWT_FLATBTN, 1, 267, 290, 46, 69, 5175, STR_SHOW_PATROL_AREA_TIP },				// show staff patrol area tool
-	{ WWT_FLATBTN, 1, 291, 314, 46, 69, 5192, STR_SHOW_STAFF_ON_MAP_TIP },				// show staff on map button
+	{ WWT_FRAME,			0,	0,		319,	0,		269,	0x0FFFFFFFF,					STR_NONE },							// panel / background
+	{ WWT_CAPTION,			0,	1,		318,	1,		14,		STR_STAFF,						STR_WINDOW_TITLE_TIP },				// title bar
+	{ WWT_CLOSEBOX,			0,	307,	317,	2,		13,		STR_CLOSE_X,					STR_CLOSE_WINDOW_TIP },				// close button
+	{ WWT_RESIZE,			1,	0,		319,	43,		269,	0x0FFFFFFFF,					STR_NONE },							// tab content panel
+	{ WWT_TAB,				1,	3,		33,		17,		43,		0x02000144E,					STR_STAFF_HANDYMEN_TAB_TIP },		// handymen tab
+	{ WWT_TAB,				1,	34,		64,		17,		43,		0x02000144E,					STR_STAFF_MECHANICS_TAB_TIP },		// mechanics tab
+	{ WWT_TAB,				1,	65,		95,		17,		43,		0x02000144E,					STR_STAFF_SECURITY_TAB_TIP },		// security guards tab
+	{ WWT_TAB,				1,	96,		126,	17,		43,		0x02000144E,					STR_STAFF_ENTERTAINERS_TAB_TIP },	// entertainers tab
+	{ WWT_SCROLL,			1,	3,		316,	72,		266,	3,								STR_NONE },							// staff list
+	{ WWT_COLORBTN,			1,	130,	141,	58,		69,		STR_NONE,						STR_UNIFORM_COLOUR_TIP },			// uniform color picker
+	{ WWT_DROPDOWN_BUTTON,	0,	165,	309,	17,		29,		STR_NONE,						STR_HIRE_STAFF_TIP },				// hire button
+	{ WWT_FLATBTN,			1,	267,	290,	46,		69,		5175,							STR_SHOW_PATROL_AREA_TIP },			// show staff patrol area tool
+	{ WWT_FLATBTN,			1,	291,	314,	46,		69,		5192,							STR_SHOW_STAFF_ON_MAP_TIP },		// show staff on map button
 	{ WIDGETS_END },
 };
 
@@ -167,9 +169,6 @@ void window_staff_list_open()
 	window->max_width = 500;
 	window->max_height = 450;
 	window->flags |= WF_RESIZABLE;
-	window->colours[0] = 1;
-	window->colours[1] = 4;
-	window->colours[2] = 4;
 }
 
 void window_staff_list_cancel_tools(rct_window *w) {
@@ -350,8 +349,9 @@ void window_staff_list_toolabort() {
 *
 *  rct2: 0x006BDBE6
 */
-void window_staff_list_scrollgetsize() {
-	int spriteIndex;
+void window_staff_list_scrollgetsize()
+{
+	int i, width, height, spriteIndex;
 	rct_peep *peep;
 	rct_window *w;
 
@@ -370,8 +370,8 @@ void window_staff_list_scrollgetsize() {
 		window_invalidate(w);
 	}
 	
-	int scrollHeight = staffCount * 10;
-	int i = scrollHeight - window_staff_list_widgets[WIDX_STAFF_LIST_LIST].bottom + window_staff_list_widgets[WIDX_STAFF_LIST_LIST].top + 21;
+	height = staffCount * 10;
+	i = height - window_staff_list_widgets[WIDX_STAFF_LIST_LIST].bottom + window_staff_list_widgets[WIDX_STAFF_LIST_LIST].top + 21;
 	if (i < 0)
 		i = 0;
 	if (i < w->scrolls[0].v_top) {
@@ -379,17 +379,8 @@ void window_staff_list_scrollgetsize() {
 		window_invalidate(w);
 	}
 
-	#ifdef _MSC_VER
-	__asm mov ecx, 420
-	#else
-	__asm__("mov ecx, 420 ");
-	#endif
-
-	#ifdef _MSC_VER
-	__asm mov edx, scrollHeight
-	#else
-	__asm__("mov edx, %[scrollHeight] " : [scrollHeight] "+m" (scrollHeight));
-	#endif
+	width = 420;
+	window_scrollsize_set_registers(width, height);
 }
 
 /**
@@ -457,6 +448,7 @@ void window_staff_list_invalidate()
 	rct_window *w;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	int pressed_widgets = w->pressed_widgets & 0xFFFFFF0F;
 	uint8 tabIndex = RCT2_GLOBAL(RCT2_ADDRESS_WINDOW_STAFF_LIST_SELECTED_TAB, uint8);

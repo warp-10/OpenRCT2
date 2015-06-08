@@ -26,6 +26,7 @@
 #include "../interface/window.h"
 #include "../sprites.h"
 #include "../world/scenery.h"
+#include "../interface/themes.h"
 
 
 enum WINDOW_MAP_WIDGET_IDX {
@@ -95,6 +96,9 @@ static void window_map_invalidate();
 static void window_map_paint();
 static void window_map_scrollpaint();
 static void window_map_tooltip();
+static void window_map_textinput();
+static void window_map_inputsize_land(rct_window *w);
+static void window_map_inputsize_map(rct_window *w);
 
 static void window_map_set_bounds(rct_window* w);
 
@@ -121,7 +125,7 @@ static void* window_map_events[] = {
 	window_map_scrollmousedown,
 	window_map_scrollmousedown,
 	window_map_emptysub,
-	window_map_emptysub,
+	window_map_textinput,
 	window_map_emptysub,
 	window_map_emptysub,
 	window_map_tooltip,
@@ -131,6 +135,10 @@ static void* window_map_events[] = {
 	window_map_paint,
 	window_map_scrollpaint
 };
+
+// Cheat: in-game land ownership editor
+int g_ingame_land_ownership_editor;
+extern void toggle_ingame_land_ownership_editor();
 
 /**
 *
@@ -160,8 +168,10 @@ void window_map_open()
 		(1 << WIDX_CLOSE) |
 		(1 << WIDX_PEOPLE_TAB) |
 		(1 << WIDX_RIDES_TAB) |
+		(1 << WIDX_MAP_SIZE_SPINNER) |
 		(1 << WIDX_MAP_SIZE_SPINNER_UP) |
 		(1 << WIDX_MAP_SIZE_SPINNER_DOWN) |
+		(1 << WIDX_LAND_TOOL) |
 		(1 << WIDX_LAND_TOOL_SMALLER) |
 		(1 << WIDX_LAND_TOOL_LARGER) |
 		(1 << WIDX_SET_LAND_RIGHTS) |
@@ -182,9 +192,6 @@ void window_map_open()
 	window_map_init_map();
 	RCT2_GLOBAL(0x00F64F05, uint8) = 0;
 	window_map_center_on_view_point();
-
-	w->colours[0] = 12;
-	w->colours[1] = 24;
 }
 
 /**
@@ -319,8 +326,8 @@ static void window_map_mouseup()
 
 		RCT2_GLOBAL(0x9E32D2, sint8) = 0;
 		
-		if (!(RCT2_GLOBAL(0x9DE518, sint32) & (1 << 6))) // Remove?
-			RCT2_GLOBAL(0x9DE518, sint32) |= (1 << 6);
+		if (!(RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, sint32) & INPUT_FLAG_6)) // Remove?
+			RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, sint32) |= INPUT_FLAG_6;
 
 		show_gridlines();
 		show_land_rights();
@@ -344,6 +351,12 @@ static void window_map_mouseup()
 		show_gridlines();
 		show_land_rights();
 		show_construction_rights();
+		break;
+	case WIDX_LAND_TOOL:
+		window_map_inputsize_land(var_w);
+		break;
+	case WIDX_MAP_SIZE_SPINNER:
+		window_map_inputsize_map(var_w);
 		break;
 
 	default:
@@ -369,14 +382,74 @@ static void window_map_mouseup()
 */
 static void window_map_mousedown(int widgetIndex, rct_window*w, rct_widget* widget)
 {
-	// The normal map window doesn't have widget 8 or 9.
-	// I assume these widgets refer to the Scenario Editor's map window.
-	if (widgetIndex == 8) {
+	// These widgets all refer to the Scenario Editor's map window.
+	if (widgetIndex == WIDX_MAP_SIZE_SPINNER_UP) {
 		RCT2_CALLPROC_X(0x0068D641, 0, 0, 0, widgetIndex, (int)w, 0, 0);
 	}
-	else if (widgetIndex == 9) {
+	else if (widgetIndex == WIDX_MAP_SIZE_SPINNER_DOWN) {
 		RCT2_CALLPROC_X(0x0068D6B4, 0, 0, 0, widgetIndex, (int)w, 0, 0);
 	}
+	else if (widgetIndex == WIDX_SET_LAND_RIGHTS)
+	{
+		// When unselecting the land rights tool, reset the size so the number doesn't
+		// stay in the map window.
+		RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16) = 1;
+	}
+}
+
+static void window_map_textinput()
+{
+	uint8 result;
+	short widgetIndex;
+	rct_window *w;
+	char *text;
+	int size;
+	char* end;
+
+	window_textinput_get_registers(w, widgetIndex, result, text);
+
+	if (result) {
+		if (widgetIndex == WIDX_LAND_TOOL) {
+			size = strtol(text, &end, 10);
+			if (*end == '\0') {
+				if (size < 1) size = 1;
+				if (size > 64) size = 64;
+				RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16) = size;
+				window_invalidate(w);
+			}
+		}
+		else if (widgetIndex == WIDX_MAP_SIZE_SPINNER) {
+			size = strtol(text, &end, 10);
+			if (*end == '\0') {
+				if (size < 50) size = 50;
+				if (size > 256) size = 256;
+				int currentSize = RCT2_GLOBAL(RCT2_ADDRESS_MAP_SIZE, uint16);
+				while (size < currentSize) {
+					RCT2_CALLPROC_X(0x0068D6B4, 0, 0, 0, widgetIndex, (int)w, 0, 0);
+					currentSize--;
+				}
+				while (size > currentSize) {
+					RCT2_CALLPROC_X(0x0068D641, 0, 0, 0, widgetIndex, (int)w, 0, 0);
+					currentSize++;
+				}
+				window_invalidate(w);
+			}
+		}
+	}
+}
+
+static void window_map_inputsize_land(rct_window *w)
+{
+	((uint16*)TextInputDescriptionArgs)[0] = 1;
+	((uint16*)TextInputDescriptionArgs)[1] = 64;
+	window_text_input_open(w, WIDX_LAND_TOOL, 5128, 5129, STR_NONE, STR_NONE, 3);
+}
+
+static void window_map_inputsize_map(rct_window *w)
+{
+	((uint16*)TextInputDescriptionArgs)[0] = 50;
+	((uint16*)TextInputDescriptionArgs)[1] = 256;
+	window_text_input_open(w, WIDX_MAP_SIZE_SPINNER, 5130, 5131, STR_NONE, STR_NONE, 4);
 }
 
 /**
@@ -394,15 +467,13 @@ static void window_map_update(rct_window *w)
 */
 static void window_map_scrollgetsize()
 {
+	int width, height;
+
 	window_map_invalidate();
 
-	#ifdef _MSC_VER
-	__asm mov ecx, 512
-	__asm mov edx, 512
-	#else
-	__asm__ ( "mov ecx, 512 " );
-	__asm__ ( "mov edx, 512 " );
-	#endif
+	width = 512;
+	height = 512;
+	window_scrollsize_set_registers(width, height);
 }
 
 /**
@@ -442,6 +513,7 @@ static void window_map_invalidate()
 	int i, height;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	// set the pressed widgets
 	pressed_widgets = (uint32)w->pressed_widgets;
@@ -474,7 +546,8 @@ static void window_map_invalidate()
 	w->widgets[WIDX_CLOSE].right = w->width - 2 - 11 + 10;
 	w->widgets[WIDX_MAP].right = w->width - 4;
 
-	if ((RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_SCENARIO_EDITOR))
+	if ((RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_SCENARIO_EDITOR) ||
+		g_ingame_land_ownership_editor)
 		w->widgets[WIDX_MAP].bottom = w->height - 1 - 72;
 	else if (w->selected_tab == 1)
 		w->widgets[WIDX_MAP].bottom = w->height - 1 - 44;
@@ -520,7 +593,8 @@ static void window_map_invalidate()
 
 
 
-	if ((RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_SCENARIO_EDITOR)) {
+	if ((RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_SCENARIO_EDITOR) ||
+		g_ingame_land_ownership_editor) {
 		// scenario editor: build park entrance selected, show rotate button
 		if ((RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) & INPUT_FLAG_TOOL_ACTIVE) &&
 			RCT2_GLOBAL(RCT2_ADDRESS_TOOL_WINDOWCLASS, uint8) == WC_MAP &&
@@ -573,7 +647,9 @@ static void window_map_paint()
 	y = w->y + (window_map_widgets[WIDX_LAND_TOOL].top + window_map_widgets[WIDX_LAND_TOOL].bottom) / 2;
 
 	// FEATURE larger land tool size support
-	if ((RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16) > 7) &&
+	if (RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) & INPUT_FLAG_TOOL_ACTIVE &&
+		RCT2_GLOBAL(RCT2_ADDRESS_TOOL_WIDGETINDEX, uint8) == WIDX_SET_LAND_RIGHTS &&
+		(RCT2_GLOBAL(RCT2_ADDRESS_LAND_TOOL_SIZE, sint16) > 7) &&
 		(RCT2_GLOBAL(RCT2_ADDRESS_TOOL_WINDOWCLASS, uint8) == WC_MAP)) {
 		RCT2_GLOBAL(0x009BC677, char) = FORMAT_BLACK;
 		RCT2_GLOBAL(0x009BC678, char) = FORMAT_COMMA16;
@@ -608,7 +684,8 @@ static void window_map_paint()
 			w->y + w->widgets[WIDX_PEOPLE_STARTING_POSITION].top + 18, 0);
 	}
 
-	if (!(RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_SCENARIO_EDITOR)) {
+	if (!((RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_SCENARIO_EDITOR)
+		|| g_ingame_land_ownership_editor)) {
 		// render the map legend
 		if (w->selected_tab != 0) {
 			x = w->x + 4;
@@ -824,7 +901,7 @@ static void window_map_scrollpaint()
 
 	gfx_clear(dpi, 0x0A0A0A0A);
 
-	g1_element = RCT2_ADDRESS(RCT2_ADDRESS_G1_ELEMENTS, rct_g1_element);
+	g1_element = &g1Elements[0];
 	pushed_g1_element = *g1_element;
 
 	g1_element->offset = RCT2_GLOBAL(RCT2_ADDRESS_MAP_IMAGE_DATA, uint8*);
@@ -907,4 +984,10 @@ static void window_map_center_on_view_point()
 	w_map->scrolls[0].h_left = cx;
 	w_map->scrolls[0].v_top = dx;
 	widget_scroll_update_thumbs(w_map, WIDX_MAP);
+}
+
+// In-game land ownership editor cheat
+void toggle_ingame_land_ownership_editor()
+{
+	g_ingame_land_ownership_editor = !g_ingame_land_ownership_editor;
 }

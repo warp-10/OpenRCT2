@@ -32,6 +32,7 @@
 #include "../world/scenery.h"
 #include "../world/sprite.h"
 #include "dropdown.h"
+#include "../interface/themes.h"
 
 #define WINDOW_SCENERY_WIDTH	634
 #define WINDOW_SCENERY_HEIGHT	142
@@ -458,13 +459,13 @@ void window_scenery_open()
 	window_scenery_update_scroll(window);
 	show_gridlines();
 	window_scenery_rotation = 3;
-	RCT2_GLOBAL(0x00F64F12, uint8) = 0;
-	RCT2_GLOBAL(0x00F64F13, uint8) = 0;
+	RCT2_GLOBAL(RCT2_ADDRESS_SCENERY_TOOL_CTRL_PRESSED, uint8) = 0;
+	RCT2_GLOBAL(RCT2_ADDRESS_SCENERY_TOOL_SHIFT_PRESSED, uint8) = 0;
 	window->scenery.selected_scenery_id = -1;
 	window->scenery.hover_counter = 0;
 	window_push_others_below(window);
 	RCT2_GLOBAL(0x00F64F0D, uint8) = 0;
-	RCT2_GLOBAL(0x00F64EB4, uint32) = 0x80000000;
+	RCT2_GLOBAL(0x00F64EB4, uint32) = MONEY32_UNDEFINED;
 	RCT2_GLOBAL(0x00F64EC0, uint16) = 0;
 	window_scenery_is_repaint_scenery_tool_on = 0; // repaint colored scenery tool state
 	window_scenery_is_build_cluster_tool_on = 0; // build cluster tool state
@@ -473,9 +474,6 @@ void window_scenery_open()
 	window->max_width = WINDOW_SCENERY_WIDTH;
 	window->min_height = WINDOW_SCENERY_HEIGHT;
 	window->max_height = WINDOW_SCENERY_HEIGHT;
-	window->colours[0] = 0x18;
-	window->colours[1] = 0x0C;
-	window->colours[2] = 0x0C;
 }
 
 /**
@@ -503,9 +501,9 @@ void window_scenery_close() {
 
 	window_get_register(w);
 
-	RCT2_CALLPROC_EBPSAFE(0x006E2712);
+	scenery_remove_ghost_tool_placement();
 	hide_gridlines();
-	RCT2_CALLPROC_X(0x006CB70A, 0, 0, 0, 0, 0, 0, 0);
+	viewport_set_visibility(0);
 
 	if (window_scenery_is_scenery_tool_active())
 		tool_cancel();
@@ -543,7 +541,7 @@ static void window_scenery_mouseup()
 	case WIDX_SCENERY_ROTATE_OBJECTS_BUTTON:
 		window_scenery_rotation++;
 		window_scenery_rotation = window_scenery_rotation % 4;
-		RCT2_CALLPROC_EBPSAFE(0x006E2712);
+		scenery_remove_ghost_tool_placement();
 		window_invalidate(w);
 		break;
 	case WIDX_SCENERY_REPAINT_SCENERY_BUTTON:
@@ -643,7 +641,7 @@ static void window_scenery_mousedown(int widgetIndex, rct_window* w, rct_widget*
 	if (widgetIndex >= WIDX_SCENERY_TAB_1 && widgetIndex <= WIDX_SCENERY_TAB_20) {
 		window_scenery_active_tab_index = widgetIndex - WIDX_SCENERY_TAB_1;
 		window_invalidate(w);
-		RCT2_GLOBAL(0x00F64EB4, uint32) = 0x80000000;
+		RCT2_GLOBAL(0x00F64EB4, uint32) = MONEY32_UNDEFINED;
 		window_scenery_update_scroll(w);
 	}
 }
@@ -817,7 +815,7 @@ void window_scenery_scrollmousedown()
 	window_scenery_is_repaint_scenery_tool_on &= 0xFE;
 	sound_play_panned(4, (w->width >> 1) + w->x, 0, 0, 0);
 	w->scenery.hover_counter = -16;
-	RCT2_GLOBAL(0x00F64EB4, uint32) = 0x80000000;
+	RCT2_GLOBAL(0x00F64EB4, uint32) = MONEY32_UNDEFINED;
 	window_invalidate(w);
 }
 
@@ -887,10 +885,11 @@ void window_scenery_invalidate()
 	rct_window* w;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	uint16 tabIndex = window_scenery_active_tab_index;
 	uint32 titleStringId = 1813;
-	if (tabIndex <= 19)
+	if (tabIndex < 19)
 		titleStringId = g_scenerySetEntries[tabIndex]->name;
 	
 	window_scenery_widgets[WIDX_SCENERY_TITLE].image = titleStringId;
@@ -1057,7 +1056,7 @@ void window_scenery_paint()
 		price = sceneryEntry->small_scenery.price * 10;
 	}
 
-	if (w->scenery.selected_scenery_id == -1 && RCT2_GLOBAL(0x00F64EB4, uint32) != 0x80000000) {
+	if (w->scenery.selected_scenery_id == -1 && RCT2_GLOBAL(0x00F64EB4, uint32) != MONEY32_UNDEFINED) {
 		price = RCT2_GLOBAL(0x00F64EB4, uint32);
 	}
 

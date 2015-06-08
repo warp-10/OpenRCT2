@@ -30,6 +30,7 @@
 #include "../sprites.h"
 #include "../world/scenery.h"
 #include "dropdown.h"
+#include "../interface/themes.h"
 
 enum {
 	WINDOW_RESEARCH_PAGE_DEVELOPMENT,
@@ -235,9 +236,6 @@ void window_research_open()
 		w->page = 0;
 		w->frame_no = 0;
 		w->disabled_widgets = 0;
-		w->colours[0] = 1;
-		w->colours[1] = 19;
-		w->colours[2] = 19;
 		research_update_uncompleted_types();
 	}
 
@@ -304,6 +302,7 @@ static void window_research_development_invalidate()
 	rct_window *w;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	if (w->widgets != window_research_page_widgets[WINDOW_RESEARCH_PAGE_DEVELOPMENT]) {
 		w->widgets = window_research_page_widgets[WINDOW_RESEARCH_PAGE_DEVELOPMENT];
@@ -360,7 +359,7 @@ static void window_research_development_paint()
 				uint32 typeId = RCT2_GLOBAL(RCT2_ADDRESS_NEXT_RESEARCH_ITEM, uint32);
 				if (typeId >= 0x10000) {
 					rct_ride_type *rideEntry = RCT2_GLOBAL(0x009ACFA4 + (typeId & 0xFF) * 4, rct_ride_type*);
-					stringId = rideEntry->var_008 & 0x1000 ?
+					stringId = rideEntry->flags & RIDE_ENTRY_FLAG_SEPERATE_RIDE_NAME ?
 						rideEntry->name :
 						((typeId >> 8) & 0xFF) + 2;
 				}
@@ -398,7 +397,7 @@ static void window_research_development_paint()
 	if (typeId != 0xFFFFFFFF) {
 		if (typeId >= 0x10000) {
 			rct_ride_type *rideEntry = RCT2_GLOBAL(0x009ACFA4 + (typeId & 0xFF) * 4, rct_ride_type*);
-			stringId = rideEntry->var_008 & 0x1000 ?
+			stringId = rideEntry->flags & RIDE_ENTRY_FLAG_SEPERATE_RIDE_NAME ?
 				rideEntry->name :
 				((typeId >> 8) & 0xFF) + 2;
 
@@ -472,7 +471,7 @@ static void window_research_funding_mousedown(int widgetIndex, rct_window *w, rc
 		w->y + dropdownWidget->top,
 		dropdownWidget->bottom - dropdownWidget->top + 1,
 		w->colours[1],
-		0x80,
+		DROPDOWN_FLAG_STAY_OPEN,
 		4,
 		dropdownWidget->right - dropdownWidget->left - 3
 	);
@@ -521,6 +520,7 @@ static void window_research_funding_invalidate()
 	rct_window *w;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	if (w->widgets != window_research_page_widgets[WINDOW_RESEARCH_PAGE_FUNDING]) {
 		w->widgets = window_research_page_widgets[WINDOW_RESEARCH_PAGE_FUNDING];

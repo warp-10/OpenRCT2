@@ -28,11 +28,13 @@
 #include "drawing/drawing.h"
 #include "editor.h"
 #include "game.h"
+#include "interface/console.h"
 #include "interface/viewport.h"
 #include "intro.h"
 #include "localisation/date.h"
 #include "localisation/localisation.h"
 #include "management/news_item.h"
+#include "network/twitch.h"
 #include "object.h"
 #include "openrct2.h"
 #include "platform/platform.h"
@@ -57,12 +59,10 @@ static void rct2_update_2();
 
 static jmp_buf _end_update_jump;
 
-void rct2_quit() {
-	if (gConfigGeneral.confirmation_prompt) {
-		RCT2_GLOBAL(RCT2_ADDRESS_SAVE_PROMPT_MODE, uint16) = PM_QUIT;
-		window_save_prompt_open();
-	} else
-		openrct2_finish();
+void rct2_quit()
+{
+	RCT2_GLOBAL(RCT2_ADDRESS_SAVE_PROMPT_MODE, uint16) = PM_QUIT;
+	window_save_prompt_open();
 }
 
 int rct2_init()
@@ -72,6 +72,7 @@ int rct2_init()
 	RCT2_GLOBAL(RCT2_ADDRESS_SCENARIO_TICKS, int) = 0;
 	RCT2_GLOBAL(0x009AC310, char*) = RCT2_GLOBAL(RCT2_ADDRESS_CMDLINE, char*);
 	get_system_time();
+	srand((unsigned int)time(0));
 	RCT2_GLOBAL(0x009DEA69, short) = RCT2_GLOBAL(RCT2_ADDRESS_OS_TIME_DAY, short);
 	RCT2_GLOBAL(0x009DEA6B, short) = RCT2_GLOBAL(RCT2_ADDRESS_OS_TIME_MONTH, short);
 	if (!rct2_init_directories())
@@ -93,9 +94,12 @@ int rct2_init()
 	track_load_list(item);
 
 	gfx_load_g1();
+	gfx_load_g2();
 	gfx_load_character_widths();
-	platform_init();
-	audio_init1();
+	if (!gOpenRCT2Headless) {
+		platform_init();
+		audio_init1();
+	}
 	viewport_init_all();
 	news_item_init_queue();
 	get_local_time();
@@ -107,7 +111,8 @@ int rct2_init()
 	sub_6BD3A4();
 	map_init(150);
 	park_init();
-	window_title_menu_open();
+	if (!gOpenRCT2Headless)
+		window_title_menu_open();
 	date_reset();
 	climate_reset(CLIMATE_COOL_AND_WET);
 	scenery_set_default_placement_configuration();
@@ -115,10 +120,11 @@ int rct2_init()
 	window_guest_list_init_vars_b();
 	window_staff_list_init_vars();
 
-	title_load();
+	if (!gOpenRCT2Headless) {
+		title_load();
 
-	gfx_clear(RCT2_ADDRESS(RCT2_ADDRESS_SCREEN_DPI, rct_drawpixelinfo), 10);
-	RCT2_GLOBAL(RCT2_ADDRESS_RUN_INTRO_TICK_PART, uint8) = gConfigGeneral.play_intro ? 8 : 255;
+		gfx_clear(RCT2_ADDRESS(RCT2_ADDRESS_SCREEN_DPI, rct_drawpixelinfo), 10);
+	}
 
 	log_verbose("initialising game finished");
 	return 1;
@@ -274,12 +280,12 @@ int check_file_path(int pathId)
 
 	case PATH_ID_CUSTOM1:
 		if (file != INVALID_HANDLE_VALUE)
-			RCT2_GLOBAL(0x009AF164, unsigned int) = SetFilePointer(file, 0, 0, FILE_END); // Store file size in music_custom1_size @ 0x009AF164
+			ride_music_info_list[36]->length = SetFilePointer(file, 0, 0, FILE_END); // Store file size in music_custom1_size @ 0x009AF164
 		break;
 
 	case PATH_ID_CUSTOM2:
 		if (file != INVALID_HANDLE_VALUE)
-			RCT2_GLOBAL(0x009AF16E, unsigned int) = SetFilePointer(file, 0, 0, FILE_END); // Store file size in music_custom2_size @ 0x009AF16E
+			ride_music_info_list[37]->length = SetFilePointer(file, 0, 0, FILE_END); // Store file size in music_custom2_size @ 0x009AF16E
 		break;
 	}
 
@@ -344,6 +350,10 @@ void rct2_update_2()
 		title_update();
 	else
 		game_update();
+
+	twitch_update();
+	console_update();
+	console_draw(RCT2_ADDRESS(RCT2_ADDRESS_SCREEN_DPI, rct_drawpixelinfo));
 }
 
 void rct2_endupdate()

@@ -31,6 +31,7 @@
 #include "error.h"
 #include "dropdown.h"
 #include "../drawing/drawing.h"
+#include "../interface/themes.h"
 
 #define WW 113
 #define WH 96
@@ -130,9 +131,6 @@ void window_banner_open(rct_windownumber number)
 
 	w->number = number;
 	window_init_scroll_widgets(w);
-	w->colours[0] = 24;
-	w->colours[1] = 24;
-	w->colours[2] = 24;
 
 	int view_x = gBanners[w->number].x << 5;
 	int view_y = gBanners[w->number].y << 5;
@@ -201,13 +199,13 @@ static void window_banner_mouseup()
 		window_close(w);
 		break;
 	case WIDX_BANNER_DEMOLISH:
-		game_do_command(x, 1, y, map_element->base_height | (map_element->properties.banner.position << 8), GAME_COMMAND_51, 0, 0);
+		game_do_command(x, 1, y, map_element->base_height | (map_element->properties.banner.position << 8), GAME_COMMAND_REMOVE_BANNER, 0, 0);
 		break;
 	case WIDX_BANNER_TEXT:
 		window_text_input_open(w, WIDX_BANNER_TEXT, 2982, 2983, gBanners[w->number].string_idx, 0, 32);
 		break;
 	case WIDX_BANNER_NO_ENTRY:
-		RCT2_CALLPROC_EBPSAFE(0x006EE3C3);
+		textinput_cancel();
 		banner->flags ^= BANNER_FLAG_NO_ENTRY;
 		window_invalidate(w);
 
@@ -244,7 +242,7 @@ static void window_banner_mousedown(int widgetIndex, rct_window*w, rct_widget* w
 			widget->top + w->y, 
 			widget->bottom - widget->top + 1,
 			w->colours[1], 
-			0x80, 
+			DROPDOWN_FLAG_STAY_OPEN,
 			13, 
 			widget->right - widget->left - 3);
 		
@@ -338,6 +336,7 @@ static void window_banner_invalidate()
 	rct_window* w;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	rct_banner* banner = &gBanners[w->number];
 	rct_widget* colour_btn = &window_banner_widgets[WIDX_MAIN_COLOR];

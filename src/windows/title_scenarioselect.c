@@ -19,6 +19,7 @@
 *****************************************************************************/
 
 #include "../addresses.h"
+#include "../config.h"
 #include "../audio/audio.h"
 #include "../localisation/date.h"
 #include "../localisation/localisation.h"
@@ -26,6 +27,7 @@
 #include "../sprites.h"
 #include "../interface/widget.h"
 #include "../interface/window.h"
+#include "../interface/themes.h"
 
 enum {
 	WIDX_BACKGROUND,
@@ -116,15 +118,12 @@ void window_scenarioselect_open()
 		334,
 		(uint32*)window_scenarioselect_events,
 		WC_SCENARIO_SELECT,
-		WF_STICK_TO_FRONT | WF_10
+		WF_10
 	);
 	window->widgets = window_scenarioselect_widgets;
 	
 	window->enabled_widgets = 0x04 | 0x10 | 0x20 | 0x40 | 0x80 | 0x100;
 	window_init_scroll_widgets(window);
-	window->colours[0] = 1;
-	window->colours[1] = 26;
-	window->colours[2] = 26;
 	window->viewport_focus_coordinates.var_480 = -1;
 	window->var_494 = 0;
 
@@ -191,12 +190,13 @@ static void window_scenarioselect_mousedown(int widgetIndex, rct_window*w, rct_w
 
 static void window_scenarioselect_scrollgetsize()
 {
-	int i, height;
+	int i, width, height;
 	rct_window *w;
 	rct_scenario_basic *scenario;
 
 	window_get_register(w);
 
+	width = 0;
 	height = 0;
 	for (i = 0; i < gScenarioListCount; i++) {
 		scenario = &gScenarioList[i];
@@ -206,18 +206,7 @@ static void window_scenarioselect_scrollgetsize()
 			height += 24;
 	}
 
-	#ifdef _MSC_VER
-	__asm mov ecx, 0
-	#else
-	__asm__ ( "mov ecx, 0 "  );
-	#endif
-
-	#ifdef _MSC_VER
-	__asm mov edx, height
-	#else
-	__asm__ ( "mov edx, %[height] " : [height] "+m" (height) );
-	#endif
-
+	window_scrollsize_set_registers(width, height);
 }
 
 /* rct2: 0x6780FE */
@@ -283,6 +272,7 @@ static void window_scenarioselect_invalidate()
 	rct_window *w;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	w->pressed_widgets &= ~(0x10 | 0x20 | 0x40 | 0x80 | 0x100);
 	w->pressed_widgets |= 1LL << (w->selected_tab + 4);
@@ -290,7 +280,7 @@ static void window_scenarioselect_invalidate()
 
 static void window_scenarioselect_paint()
 {
-	int i, x, y;
+	int i, x, y, format;
 	rct_window *w;
 	rct_drawpixelinfo *dpi;
 	rct_widget *widget;
@@ -299,6 +289,8 @@ static void window_scenarioselect_paint()
 	window_paint_get_registers(w, dpi);
 
 	window_draw_widgets(w, dpi);
+	
+	format = (theme_get_preset()->features.rct1_scenario_font) ? 5138 : 1193;
 
 	// Text for each tab
 	for (i = 0; i < 5; i++) {
@@ -309,7 +301,7 @@ static void window_scenarioselect_paint()
 		x = (widget->left + widget->right) / 2 + w->x;
 		y = (widget->top + widget->bottom) / 2 + w->y - 3;
 		RCT2_GLOBAL(0x013CE952 + 0, short) = STR_BEGINNER_PARKS + i;
-		gfx_draw_string_centred_wrapped(dpi, (void*)0x013CE952, x, y, 87, 1193, 10);
+		gfx_draw_string_centred_wrapped(dpi, (void*)0x013CE952, x, y, 87, format, 10);
 	}
 
 	// Return if no scenario highlighted
@@ -352,7 +344,7 @@ static void window_scenarioselect_paint()
 
 static void window_scenarioselect_scrollpaint()
 {
-	int i, y, colour, highlighted;
+	int i, y, colour, highlighted, highlighted_format, unhighlighted_format;
 	rct_window *w;
 	rct_drawpixelinfo *dpi;
 	rct_scenario_basic *scenario;
@@ -362,6 +354,9 @@ static void window_scenarioselect_scrollpaint()
 	colour = ((char*)0x0141FC48)[w->colours[1] * 8];
 	colour = (colour << 24) | (colour << 16) | (colour << 8) | colour;
 	gfx_clear(dpi, colour);
+
+	highlighted_format = (theme_get_preset()->features.rct1_scenario_font) ? 5139 : 1193;
+	unhighlighted_format = (theme_get_preset()->features.rct1_scenario_font) ? 5139 : 1191;
 
 	y = 0;
 	for (i = 0; i < gScenarioListCount; i++) {
@@ -383,7 +378,7 @@ static void window_scenarioselect_scrollpaint()
 		// Draw scenario name
 		strcpy((char*)0x009BC677, scenario->name);
 		RCT2_GLOBAL(0x013CE952, short) = 3165;
-		gfx_draw_string_centred(dpi, highlighted ? 1193 : 1191, 210, y + 1, 0, (void*)0x013CE952);
+		gfx_draw_string_centred(dpi, highlighted ? highlighted_format : unhighlighted_format, 210, y + 1, 0, (void*)0x013CE952);
 
 		// Check if scenario is completed
 		if (scenario->flags & SCENARIO_FLAGS_COMPLETED) {

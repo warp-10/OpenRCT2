@@ -161,6 +161,67 @@ void window_text_input_open(rct_window* call_w, int call_widget, rct_string_id t
 	w->colours[2] = call_w->colours[2];
 }
 
+void window_text_input_raw_open(rct_window* call_w, int call_widget, rct_string_id title, rct_string_id description, utf8string existing_text, int maxLength)
+{
+	_maxInputLength = maxLength;
+
+	window_close_by_class(WC_TEXTINPUT);
+
+	// Clear the text input buffer
+	memset(text_input, 0, maxLength);
+
+	// Enter in the the text input buffer any existing
+	// text.
+	if (existing_text != NULL)
+		strncpy(text_input, existing_text, maxLength);
+
+	// In order to prevent strings that exceed the maxLength
+	// from crashing the game.
+	text_input[maxLength - 1] = '\0';
+
+	// This is the text displayed above the input box
+	input_text_description = description;
+
+	// Work out the existing size of the window
+	char wrapped_string[512];
+	strcpy(wrapped_string, text_input);
+
+	int no_lines = 0, font_height = 0;
+
+	// String length needs to add 12 either side of box
+	// +13 for cursor when max length.
+	gfx_wrap_string(wrapped_string, WW - (24 + 13), &no_lines, &font_height);
+
+	int height = no_lines * 10 + WH;
+
+	// Window will be in the center of the screen
+	rct_window* w = window_create_centred(
+		WW,
+		height,
+		(uint32*)window_text_input_events,
+		WC_TEXTINPUT,
+		WF_STICK_TO_FRONT
+		);
+
+	w->widgets = window_text_input_widgets;
+	w->enabled_widgets = (1 << WIDX_CLOSE) | (1 << WIDX_CANCEL) | (1 << WIDX_OKAY);
+
+	window_text_input_widgets[WIDX_TITLE].image = title;
+
+	// Save calling window details so that the information
+	// can be passed back to the correct window & widget
+	calling_class = call_w->classification;
+	calling_number = call_w->number;
+	calling_widget = call_widget;
+
+	platform_start_text_input(text_input, maxLength);
+
+	window_init_scroll_widgets(w);
+	w->colours[0] = call_w->colours[0];
+	w->colours[1] = call_w->colours[1];
+	w->colours[2] = call_w->colours[2];
+}
+
 /**
 *
 */
@@ -179,7 +240,7 @@ static void window_text_input_mouseup(){
 		// Pass back the text that has been entered.
 		// ecx when zero means text input failed
 		if (calling_w != NULL)
-			RCT2_CALLPROC_X(calling_w->event_handlers[WE_TEXT_INPUT], 0, 0, 0, calling_widget, (int)calling_w, (int)text_input, 0);
+			window_event_textinput_call(calling_w, calling_widget, NULL);
 		window_close(w);
 		break;
 	case WIDX_OKAY:
@@ -187,7 +248,7 @@ static void window_text_input_mouseup(){
 		// Pass back the text that has been entered.
 		// ecx when none zero means text input success
 		if (calling_w != NULL)
-			RCT2_CALLPROC_X(calling_w->event_handlers[WE_TEXT_INPUT], 0, 0, 1, calling_widget, (int)calling_w, (int)text_input, 0);
+			window_event_textinput_call(calling_w, calling_widget, text_input);
 		window_close(w);
 	}
 }
@@ -209,9 +270,12 @@ static void window_text_input_paint(){
 	int font_height = 0;
 	
 
-	gfx_draw_string_centred(dpi, input_text_description, w->x + WW / 2, y, w->colours[1], 0);
+	gfx_draw_string_centred(dpi, input_text_description, w->x + WW / 2, y, w->colours[1], &TextInputDescriptionArgs);
 
 	y += 25;
+
+	RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_FONT_SPRITE_BASE, uint16) = 224;
+	RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_FONT_FLAGS, uint16) = 0;
 
 	char wrapped_string[512];
 	strcpy(wrapped_string, text_input);
@@ -249,7 +313,8 @@ static void window_text_input_paint(){
 			}
 
 			if (w->frame_no > 15){
-				gfx_fill_rect(dpi, cur_x, y + 9, cur_x + width, y + 9, w->colours[1]);
+				uint8 colour = RCT2_ADDRESS(0x0141FC48, uint8)[w->colours[1] * 8];
+				gfx_fill_rect(dpi, cur_x, y + 9, cur_x + width, y + 9, colour + 5);
 			}
 
 			cur_drawn++;
@@ -278,7 +343,7 @@ static void window_text_input_text(int key, rct_window* w){
 		// Pass back the text that has been entered.
 		// ecx when none zero means text input success
 		if (calling_w)
-			RCT2_CALLPROC_X(calling_w->event_handlers[WE_TEXT_INPUT], 0, 0, 1, calling_widget, (int)calling_w, (int)text_input, 0);
+			window_event_textinput_call(calling_w, calling_widget, text_input);
 	}
 	
 	window_invalidate(w);

@@ -41,9 +41,24 @@
     <Filter Include="Source\Peep">
       <UniqueIdentifier>{51e38783-5334-464c-8f90-61d725dc8013}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Network">
+      <UniqueIdentifier>{ae88ed08-902b-4167-a78c-9b521ce67749}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Test">
+      <UniqueIdentifier>{9b842d7a-225e-4ba9-807d-1cb6ebacbdd0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Test\Management">
+      <UniqueIdentifier>{73238872-312d-437f-8497-7cb66466d835}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Test\Ride">
+      <UniqueIdentifier>{c6b9c169-ff2a-41df-9b1c-47d15763c3e2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\openrct2.exe">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\curl-ca-bundle.crt">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>
@@ -369,7 +384,6 @@
     <ClCompile Include="..\src\diagnostic.c">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\lib\lodepng\lodepng.c" />
     <ClCompile Include="..\src\windows\editor_bottom_toolbar.c">
       <Filter>Source\Windows</Filter>
     </ClCompile>
@@ -379,11 +393,9 @@
     <ClCompile Include="..\src\windows\editor_object_selection.c">
       <Filter>Source\Windows</Filter>
     </ClCompile>
-    <ClCompile Include="..\lib\lodepng\lodepng.c" />
     <ClCompile Include="..\src\localisation\user.c">
       <Filter>Source\Localisation</Filter>
     </ClCompile>
-    <ClCompile Include="..\lib\lodepng\lodepng.c" />
     <ClCompile Include="..\src\windows\editor_inventions_list.c">
       <Filter>Source\Windows</Filter>
     </ClCompile>
@@ -393,7 +405,6 @@
     <ClCompile Include="..\src\windows\editor_scenario_options.c">
       <Filter>Source\Windows</Filter>
     </ClCompile>
-    <ClCompile Include="..\lib\lodepng\lodepng.c" />
     <ClCompile Include="..\src\world\map_helpers.c">
       <Filter>Source\World</Filter>
     </ClCompile>
@@ -432,6 +443,36 @@
     </ClCompile>
     <ClCompile Include="..\src\windows\install_track.c">
       <Filter>Source\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cmdline_sprite.c">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\windows\land_rights.c">
+      <Filter>Source\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\interface\console.c">
+      <Filter>Source\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\network\twitch.cpp">
+      <Filter>Source\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\network\http.cpp">
+      <Filter>Source\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\interface\themes.c">
+      <Filter>Source\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\windows\themes.c">
+      <Filter>Source\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\tests.c">
+      <Filter>Test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\management\finance_test.c">
+      <Filter>Test\Management</Filter>
+    </ClCompile>
+    <ClCompile Include="..\test\ride\ride_ratings_test.c">
+      <Filter>Test\Ride</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -635,6 +676,27 @@
     </ClInclude>
     <ClInclude Include="..\src\world\fountain.h">
       <Filter>Source\World</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\interface\console.h">
+      <Filter>Source\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\network\http.h">
+      <Filter>Source\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\network\twitch.h">
+      <Filter>Source\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\interface\themes.h">
+      <Filter>Source\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\test\tests.h">
+      <Filter>Test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\test\management\finance_test.h">
+      <Filter>Test\Management</Filter>
+    </ClInclude>
+    <ClInclude Include="..\test\ride\ride_ratings_test.h">
+      <Filter>Test\Ride</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

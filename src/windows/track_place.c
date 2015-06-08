@@ -29,6 +29,7 @@
 #include "../sprites.h"
 #include "../ride/track.h"
 #include "../ride/track_data.h"
+#include "../interface/themes.h"
 
 #define TRACK_MINI_PREVIEW_WIDTH	168
 #define TRACK_MINI_PREVIEW_HEIGHT	78
@@ -63,6 +64,7 @@ static void window_track_place_toolupdate();
 static void window_track_place_tooldown();
 static void window_track_place_toolabort();
 static void window_track_place_unknown14();
+static void window_track_place_invalidate();
 static void window_track_place_paint();
 
 static void* window_track_place_events[] = {
@@ -91,7 +93,7 @@ static void* window_track_place_events[] = {
 	window_track_place_emptysub,
 	window_track_place_emptysub,
 	window_track_place_emptysub,
-	window_track_place_emptysub,
+	window_track_place_invalidate,
 	window_track_place_paint,
 	window_track_place_emptysub
 };
@@ -302,82 +304,14 @@ static void window_track_place_draw_mini_preview()
 
 /**
  *
- *  rct2: 0x0068A15E
- */
-static void sub_68A15E(int screenX, int screenY, short *x, short *y, int *direction, rct_map_element **mapElement)
-{
-	int my_x, my_y, z;
-	rct_map_element *myMapElement;
-	rct_viewport *viewport;
-	get_map_coordinates_from_pos(screenX, screenY, 0xFFF6, &my_x, &my_y, &z, &myMapElement, &viewport);
-
-	if (z == 0) {
-		*x = 0x8000;
-		return;
-	}
-
-	RCT2_GLOBAL(0x00F1AD3E, uint8) = z;
-	RCT2_GLOBAL(0x00F1AD30, rct_map_element*) = myMapElement;
-
-	if (z == 4) {
-		// myMapElement appears to be water
-		z = myMapElement->properties.surface.terrain;
-		z = (z & MAP_ELEMENT_WATER_HEIGHT_MASK) << 4;
-	}
-
-	RCT2_GLOBAL(0x00F1AD3C, uint16) = z;
-	RCT2_GLOBAL(0x00F1AD34, sint16) = my_x;
-	RCT2_GLOBAL(0x00F1AD36, sint16) = my_y;
-	RCT2_GLOBAL(0x00F1AD38, sint16) = my_x + 31;
-	RCT2_GLOBAL(0x00F1AD3A, sint16) = my_y + 31;
-
-	rct_xy16 start_vp_pos = screen_coord_to_viewport_coord(viewport, screenX, screenY);
-	rct_xy16 map_pos = { my_x + 16, my_y + 16 };
-
-	for (int i = 0; i < 5; i++) {
-		if (RCT2_GLOBAL(0x00F1AD3E, uint8) != 4) {
-			z = map_element_height(map_pos.x, map_pos.y);
-		} else {
-			z = RCT2_GLOBAL(0x00F1AD3C, uint16);
-		}
-		map_pos = viewport_coord_to_map_coord(start_vp_pos.x, start_vp_pos.y, z);
-		map_pos.x = clamp(RCT2_GLOBAL(0x00F1AD34, sint16), map_pos.x, RCT2_GLOBAL(0x00F1AD38, sint16));
-		map_pos.y = clamp(RCT2_GLOBAL(0x00F1AD36, sint16), map_pos.y, RCT2_GLOBAL(0x00F1AD3A, sint16));
-	}
-
-	// Determine to which edge the cursor is closest
-	int myDirection;
-	int mod_x = map_pos.x & 0x1F;
-	int mod_y = map_pos.y & 0x1F;
-	if (mod_x < mod_y) {
-		if (mod_x + mod_y < 32) {
-			myDirection = 0;
-		} else {
-			myDirection = 1;
-		}
-	} else {
-		if (mod_x + mod_y < 32) {
-			myDirection = 3;
-		} else {
-			myDirection = 2;
-		}
-	}
-
-	*x = map_pos.x & ~0x1F;
-	*y = map_pos.y & ~0x1F;
-	if (direction != NULL) *direction = myDirection;
-	if (mapElement != NULL) *mapElement = myMapElement;
-}
-
-/**
- *
  *  rct2: 0x006D017F
  */
 static void window_track_place_clear_provisional()
 {
 	if (_window_track_place_last_was_valid) {
 		sub_6D01B3(
-			(RCT2_GLOBAL(0x00F440EB, uint8) << 8) | 6,
+			6,
+			RCT2_GLOBAL(0x00F440EB, uint8), 
 			_window_track_place_last_valid_x,
 			_window_track_place_last_valid_y,
 			_window_track_place_last_valid_z
@@ -411,7 +345,7 @@ static int window_track_place_get_base_z(int x, int y)
 	if (mapElement->properties.surface.terrain & 0x1F)
 		z = max(z, (mapElement->properties.surface.terrain & 0x1F) << 4);
 	
-	return z + sub_6D01B3(3, x, y, z);
+	return z + sub_6D01B3(3, 0, x, y, z);
 }
 
 static void window_track_place_attempt_placement(int x, int y, int z, int bl, money32 *cost, uint8 *rideIndex)
@@ -423,7 +357,7 @@ static void window_track_place_attempt_placement(int x, int y, int z, int bl, mo
 	ebx = bl;
 	ecx = y;
 	edi = z;
-	result = game_do_command_p(GAME_COMMAND_47, &eax, &ebx, &ecx, &edx, &esi, &edi, &ebp);
+	result = game_do_command_p(GAME_COMMAND_PLACE_TRACK, &eax, &ebx, &ecx, &edx, &esi, &edi, &ebp);
 
 	if (cost != NULL) *cost = result;
 	if (rideIndex != NULL) *rideIndex = edi & 0xFF;
@@ -446,9 +380,6 @@ void window_track_place_open()
 	w->widgets = window_track_place_widgets;
 	w->enabled_widgets = 4 | 8 | 0x10 | 0x20;
 	window_init_scroll_widgets(w);
-	w->colours[0] = 24;
-	w->colours[1] = 24;
-	w->colours[2] = 24;
 	tool_set(w, 6, 12);
 	RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) |= INPUT_FLAG_6;
 	window_push_others_right(w);
@@ -496,7 +427,7 @@ static void window_track_place_mouseup()
 		window_track_place_draw_mini_preview();
 		break;
 	case WIDX_MIRROR:
-		RCT2_CALLPROC_EBPSAFE(0x006D2436);
+		track_mirror();
 		RCT2_GLOBAL(RCT2_ADDRESS_TRACK_PREVIEW_ROTATION, uint16) = (-RCT2_GLOBAL(RCT2_ADDRESS_TRACK_PREVIEW_ROTATION, uint16)) & 3;
 		window_invalidate(w);
 		_window_track_place_last_x = 0xFFFF;
@@ -546,7 +477,7 @@ static void window_track_place_toolupdate()
 
 	// Check if tool map position has changed since last update
 	if (x == _window_track_place_last_x && y == _window_track_place_last_y) {
-		sub_6D01B3(0, x, y, 0);
+		sub_6D01B3(0, 0, x, y, 0);
 		return;
 	}
 
@@ -579,7 +510,7 @@ static void window_track_place_toolupdate()
 		widget_invalidate(w, WIDX_PRICE);
 	}
 	
-	sub_6D01B3(0, x, y, z);
+	sub_6D01B3(0, 0, x, y, z);
 }
 
 /**
@@ -656,6 +587,14 @@ static void window_track_place_unknown14()
 	window_track_place_draw_mini_preview();
 }
 
+static void window_track_place_invalidate()
+{
+	rct_window *w;
+
+	window_get_register(w);
+	colour_scheme_update(w);
+}
+
 /**
  *
  *  rct2: 0x006CFD9D
@@ -664,7 +603,7 @@ static void window_track_place_paint()
 {
 	rct_window *w;
 	rct_drawpixelinfo *dpi, *clippedDpi;
-	rct_g1_element tmpElement, *subsituteElement, *g1Elements = RCT2_ADDRESS(RCT2_ADDRESS_G1_ELEMENTS, rct_g1_element);
+	rct_g1_element tmpElement, *subsituteElement;
 	
 	window_paint_get_registers(w, dpi);
 

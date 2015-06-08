@@ -265,7 +265,7 @@ void sub_6BD3A4()
 	for (int i = 200; i < 204; i++)
 		RCT2_ADDRESS(RCT2_ADDRESS_STAFF_MODE_ARRAY, uint8)[i] = STAFF_MODE_WALK;
 
-	sub_6C0C3F();
+	staff_update_greyed_patrol_areas();
 }
 
 /**
@@ -598,7 +598,7 @@ static void editor_finalise_main_view()
 	w->saved_view_y -= viewport->view_height >> 1;
 
 	window_invalidate(w);
-	sub_69E9A7();
+	reset_all_sprite_quadrant_placements();
 	scenery_set_default_placement_configuration();
 	window_new_ride_init_vars();
 	RCT2_GLOBAL(0x009DEB7C, uint16) = 0;

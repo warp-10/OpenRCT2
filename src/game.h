@@ -24,7 +24,7 @@
 #include "common.h"
 
 enum GAME_COMMAND {
-	GAME_COMMAND_0,
+	GAME_COMMAND_SET_RIDE_APPEARANCE,
 	GAME_COMMAND_1,
 	GAME_COMMAND_TOGGLE_PAUSE, // 2
 	GAME_COMMAND_3, //Has something to do with ride construction
@@ -39,7 +39,7 @@ enum GAME_COMMAND {
 	GAME_COMMAND_12,
 	GAME_COMMAND_13,
 	GAME_COMMAND_REMOVE_SCENERY,
-	GAME_COMMAND_15,
+	GAME_COMMAND_PLACE_SCENERY,
 	GAME_COMMAND_16,
 	GAME_COMMAND_PLACE_PATH, // 17
 	GAME_COMMAND_18,
@@ -59,7 +59,7 @@ enum GAME_COMMAND {
 	GAME_COMMAND_SET_STAFF_ORDER, // 32
 	GAME_COMMAND_SET_PARK_NAME,
 	GAME_COMMAND_SET_PARK_OPEN, // 34
-	GAME_COMMAND_35,
+	GAME_COMMAND_BUY_LAND_RIGHTS, // 35
 	GAME_COMMAND_PLACE_PARK_ENTRANCE,
 	GAME_COMMAND_REMOVE_PARK_ENTRANCE,
 	GAME_COMMAND_38,
@@ -68,14 +68,14 @@ enum GAME_COMMAND {
 	GAME_COMMAND_41,
 	GAME_COMMAND_REMOVE_FENCE,
 	GAME_COMMAND_43,
-	GAME_COMMAND_44,
+	GAME_COMMAND_REMOVE_LARGE_SCENERY,
 	GAME_COMMAND_SET_CURRENT_LOAN, // 45
 	GAME_COMMAND_SET_RESEARCH_FUNDING, // 46
-	GAME_COMMAND_47,
+	GAME_COMMAND_PLACE_TRACK,
 	GAME_COMMAND_START_MARKETING_CAMPAIGN, // 48
 	GAME_COMMAND_49,
-	GAME_COMMAND_50, // New banner? (possibly scenery)
-	GAME_COMMAND_51, // Remove banner
+	GAME_COMMAND_PLACE_BANNER, // New banner? (possibly scenery)
+	GAME_COMMAND_REMOVE_BANNER, // Remove banner
 	GAME_COMMAND_52,
 	GAME_COMMAND_53,
 	GAME_COMMAND_54,
@@ -97,7 +97,7 @@ void game_reduce_game_speed();
 void game_create_windows();
 void game_update();
 void game_logic_update();
-void sub_69E9A7(); 
+void reset_all_sprite_quadrant_placements();
 void update_palette_effects();
 
 int game_do_command(int eax, int ebx, int ecx, int edx, int esi, int edi, int ebp);

@@ -28,6 +28,7 @@
 #include "../ride/track.h"
 #include "../sprites.h"
 #include "error.h"
+#include "../interface/themes.h"
 
 enum {
 	WIDX_BACKGROUND,
@@ -128,9 +129,6 @@ void window_track_list_open(ride_list_item item)
 	w->widgets = window_track_list_widgets;
 	w->enabled_widgets = (1 << WIDX_CLOSE) | (1 << WIDX_ROTATE) | (1 << WIDX_TOGGLE_SCENERY);
 	window_init_scroll_widgets(w);
-	w->colours[0] = 26;
-	w->colours[1] = 26;
-	w->colours[2] = 26;
 	w->track_list.var_480 = 0xFFFF;
 	w->track_list.var_482 = RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_TRACK_MANAGER ? 0 : 1;
 	w->track_list.var_484 = 0;
@@ -190,7 +188,7 @@ static void window_track_list_select(rct_window *w, int index)
 
 	trackDesign = track_get_info(index, NULL);
 	if (trackDesign == NULL) return;
-	if (trackDesign->track_td6.var_06 & 4)
+	if (trackDesign->track_td6.track_flags & 4)
 		window_error_open(STR_THIS_DESIGN_WILL_BE_BUILT_WITH_AN_ALTERNATIVE_VEHICLE_TYPE, -1);
 
 	window_close(w);
@@ -346,11 +344,12 @@ static void window_track_list_invalidate()
 	rct_string_id stringId;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	entry = GET_RIDE_ENTRY(_window_track_list_item.entry_index);
 
 	stringId = entry->name;
-	if (!(entry->var_008 & 0x1000))
+	if (!(entry->flags & RIDE_ENTRY_FLAG_SEPERATE_RIDE_NAME))
 		stringId = _window_track_list_item.type + 2;
 
 	RCT2_GLOBAL(0x013CE952, uint16) = stringId;
@@ -393,7 +392,7 @@ static void window_track_list_paint()
 	uint16 holes, speed, drops, dropHeight, inversions;
 	fixed32_2dp rating;
 	int trackIndex, x, y, colour, gForces, airTime;
-	rct_g1_element tmpElement, *subsituteElement, *g1Elements = RCT2_ADDRESS(RCT2_ADDRESS_G1_ELEMENTS, rct_g1_element);
+	rct_g1_element tmpElement, *subsituteElement;
 
 	window_paint_get_registers(w, dpi);
 
@@ -436,13 +435,13 @@ static void window_track_list_paint()
 
 	RCT2_GLOBAL(0x00F44153, uint8) = 0;
 	// Warnings
-	if ((track_td6->var_06 & 4) && !(RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_TRACK_MANAGER)) {
+	if ((track_td6->track_flags & 4) && !(RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_TRACK_MANAGER)) {
 		// Vehicle design not available
 		gfx_draw_string_centred_clipped(dpi, STR_VEHICLE_DESIGN_UNAVAILABLE, NULL, 0, x, y, 368);
 		y -= 10;
 	}
 
-	if (track_td6->var_06 & 1) {
+	if (track_td6->track_flags & 1) {
 		RCT2_GLOBAL(0x00F44153, uint8) = 1;
 		if (RCT2_GLOBAL(RCT2_ADDRESS_TRACK_DESIGN_SCENERY_TOGGLE, uint8) == 0) {
 			// Scenery not available
@@ -509,7 +508,7 @@ static void window_track_list_paint()
 		y += 10;
 
 		// Maximum negative verical Gs
-		gForces = track_td6->max_negitive_vertical_g * 32;
+		gForces = track_td6->max_negative_vertical_g * 32;
 		gfx_draw_string_left(dpi, STR_MAX_NEGATIVE_VERTICAL_G, &gForces, 0, x, y);
 		y += 10;
 
@@ -518,7 +517,8 @@ static void window_track_list_paint()
 		gfx_draw_string_left(dpi, STR_MAX_LATERAL_G, &gForces, 0, x, y);
 		y += 10;
 
-		if (track_td6->var_07 / 4 >= 2) {
+		// If .TD6
+		if (track_td6->version_and_colour_scheme / 4 >= 2) {
 			if (track_td6->total_air_time != 0) {
 				// Total air time
 				airTime = track_td6->total_air_time * 25;

@@ -26,7 +26,7 @@
 typedef int rct_expenditure_type;
 
 enum {
-	RCT_EXPENDITURE_TYPE_RIDE_CONSRUCTION,
+	RCT_EXPENDITURE_TYPE_RIDE_CONSTRUCTION,
 	RCT_EXPENDITURE_TYPE_RIDE_RUNNING_COSTS,
 	RCT_EXPENDITURE_TYPE_LAND_PURCHASE,
 	RCT_EXPENDITURE_TYPE_LANDSCAPING,
@@ -39,8 +39,12 @@ enum {
 	RCT_EXPENDITURE_TYPE_WAGES,
 	RCT_EXPENDITURE_TYPE_MARKETING,
 	RCT_EXPENDITURE_TYPE_RESEARCH,
-	RCT_EXPENDITURE_TYPE_INTEREST
+	RCT_EXPENDITURE_TYPE_INTEREST,
+	RCT_EXPENDITURE_TYPE_COUNT
 };
+
+#define EXPENDITURE_TABLE_MONTH_COUNT 16
+#define EXPENDITURE_TABLE_TOTAL_COUNT (EXPENDITURE_TABLE_MONTH_COUNT * RCT_EXPENDITURE_TYPE_COUNT)
 
 extern const money32 research_cost_table[4];
 
@@ -52,9 +56,14 @@ void finance_pay_ride_upkeep();
 void finance_reset_history();
 void finance_init();
 void finance_update_daily_profit();
+void finance_shift_expenditure_table();
 void sub_69E869();
 
 void finance_set_loan(money32 loan);
+money32 finance_get_initial_cash();
+money32 finance_get_current_loan();
+money32 finance_get_maximum_loan();
+money32 finance_get_current_cash();
 void game_command_set_current_loan(int* eax, int* ebx, int* ecx, int* edx, int* esi, int* edi, int* ebp);
 
 #endif

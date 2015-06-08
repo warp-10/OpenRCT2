@@ -46,6 +46,8 @@
 static char _scenarioPath[MAX_PATH];
 static const char *_scenarioFileName;
 
+char gScenarioSaveName[MAX_PATH];
+
 static int scenario_create_ducks();
 
 /**
@@ -248,7 +250,7 @@ int scenario_load_and_play_from_path(const char *path)
 	mainWindow->saved_view_y -= mainWindow->viewport->view_height >> 1;
 	window_invalidate(mainWindow);
 
-	sub_69E9A7();
+	reset_all_sprite_quadrant_placements();
 	window_new_ride_init_vars();
 
 	// Set the scenario pseduo-random seeds
@@ -305,8 +307,9 @@ int scenario_load_and_play_from_path(const char *path)
 	}
 
 	// Set the last saved game path
+	format_string(gScenarioSaveName, RCT2_GLOBAL(RCT2_ADDRESS_PARK_NAME, rct_string_id), (void*)RCT2_ADDRESS_PARK_NAME_ARGS);
 	strcpy((char*)RCT2_ADDRESS_SAVED_GAMES_PATH_2, (char*)RCT2_ADDRESS_SAVED_GAMES_PATH);
-	format_string((char*)RCT2_ADDRESS_SAVED_GAMES_PATH_2 + strlen((char*)RCT2_ADDRESS_SAVED_GAMES_PATH_2), RCT2_GLOBAL(0x0013573D4, uint16), (void*)0x0013573D8);
+	strcpy((char*)RCT2_ADDRESS_SAVED_GAMES_PATH_2 + strlen((char*)RCT2_ADDRESS_SAVED_GAMES_PATH_2), gScenarioSaveName);
 	strcat((char*)RCT2_ADDRESS_SAVED_GAMES_PATH_2, ".SV6");
 
 	memset((void*)0x001357848, 0, 56);
@@ -314,7 +317,7 @@ int scenario_load_and_play_from_path(const char *path)
 	RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_PROFIT, money32) = 0;
 	RCT2_GLOBAL(0x01358334, money32) = 0;
 	RCT2_GLOBAL(0x01358338, uint16) = 0;
-	RCT2_GLOBAL(RCT2_ADDRESS_COMPLETED_COMPANY_VALUE, uint32) = 0x80000000;
+	RCT2_GLOBAL(RCT2_ADDRESS_COMPLETED_COMPANY_VALUE, uint32) = MONEY32_UNDEFINED;
 	RCT2_GLOBAL(RCT2_ADDRESS_TOTAL_ADMISSIONS, uint32) = 0;
 	RCT2_GLOBAL(RCT2_ADDRESS_INCOME_FROM_ADMISSIONS, uint32) = 0;
 	RCT2_GLOBAL(0x013587D8, uint16) = 63;
@@ -517,7 +520,7 @@ void scenario_objectives_check()
 		park_value = RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_PARK_VALUE, sint32);
 
 
-	if ( scenario_completed_company_value != 0x80000000)
+	if ( scenario_completed_company_value != MONEY32_UNDEFINED)
 		return;
 
 	switch (objective_type) {
@@ -725,7 +728,7 @@ void scenario_update()
 		// month ends actions
 		RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_MONTH_YEAR, sint16)++;
 		RCT2_GLOBAL(RCT2_ADDRESS_BTM_TOOLBAR_DIRTY_FLAGS, uint32) |= BTM_TB_DIRTY_FLAG_DATE;
-		RCT2_CALLPROC_EBPSAFE(0x0069DEAD);
+		finance_shift_expenditure_table();
 		scenario_objectives_check();
 		scenario_entrance_fee_too_high_check();
 		award_update_all();
@@ -854,8 +857,8 @@ int scenario_prepare_for_save()
 
 	s6Info->objective_type = RCT2_GLOBAL(RCT2_ADDRESS_OBJECTIVE_TYPE, uint8);
 	s6Info->objective_arg_1 = RCT2_GLOBAL(RCT2_ADDRESS_OBJECTIVE_YEAR, uint8);
-	s6Info->objective_arg_2 = RCT2_GLOBAL(RCT2_ADDRESS_OBJECTIVE_CURRENCY, uint8);
-	s6Info->objective_arg_3 = RCT2_GLOBAL(RCT2_ADDRESS_OBJECTIVE_NUM_GUESTS, uint8);
+	s6Info->objective_arg_2 = RCT2_GLOBAL(RCT2_ADDRESS_OBJECTIVE_CURRENCY, sint32);
+	s6Info->objective_arg_3 = RCT2_GLOBAL(RCT2_ADDRESS_OBJECTIVE_NUM_GUESTS, uint16);
 
 	scenario_prepare_rides_for_save();
 
@@ -967,6 +970,9 @@ int scenario_save(char *path, int flags)
 	rct_window *w;
 	rct_viewport *viewport;
 	int viewX, viewY, viewZoom, viewRotation;
+
+	strcpy(gScenarioSaveName, path_get_filename(path));
+	path_remove_extension(gScenarioSaveName);
 
 	if (flags & 2)
 		log_verbose("saving scenario, %s", path);

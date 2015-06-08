@@ -203,7 +203,7 @@ static void title_update_showcase()
 				}
 
 				window_invalidate(w);
-				sub_69E9A7();
+				reset_all_sprite_quadrant_placements();
 				window_new_ride_init_vars();
 				sub_684AC3();
 				scenery_set_default_placement_configuration();
@@ -278,6 +278,7 @@ void title_update()
 	RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) &= ~0x80;
 
 	window_map_tooltip_update_visibility();
+	window_dispatch_update_all();
 	window_update_all();
 	DrawOpenRCT2(0, RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_HEIGHT, uint16) - 20);
 

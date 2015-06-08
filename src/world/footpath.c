@@ -24,11 +24,11 @@
 #include "../util/util.h"
 #include "footpath.h"
 #include "map.h"
+#include "scenery.h"
 
 void sub_673883(int x, int y, int z);
 void sub_69A48B(int x, int y, int z);
-void sub_6A6C66(int x, int y, rct_map_element *mapElement, int flags);
-void sub_6A759F();
+
 
 enum {
 	FOOTPATH_CONSTRUCTION_FLAG_ALLOW_DURING_PAUSED = 1 << 3
@@ -61,10 +61,10 @@ static void automatically_set_peep_spawn(int x, int y, int z)
 		}
 	}
 
-	peepSpawn->x = (word_981D6C[direction].x * 15) + 16;
-	peepSpawn->y = (word_981D6C[direction].y * 15) + 16;
+	peepSpawn->x = x + (word_981D6C[direction].x * 15) + 16;
+	peepSpawn->y = y + (word_981D6C[direction].y * 15) + 16;
 	peepSpawn->direction = direction;
-	peepSpawn->z = z / 2;
+	peepSpawn->z = z;
 }
 
 rct_map_element *map_get_footpath_element(int x, int y, int z)
@@ -201,8 +201,8 @@ static money32 footpath_element_update(int x, int y, rct_map_element *mapElement
 		}
 
 		if (RCT2_GLOBAL(0x00F3EF88, uint16) != 0) {
-			uint8 *unk = RCT2_ADDRESS(0x009ADA50, uint8*)[RCT2_GLOBAL(0x00F3EF88, uint16)];
-			uint16 unk6 = RCT2_GLOBAL(unk + 6, uint16);
+			rct_scenery_entry* scenery_entry = g_pathBitSceneryEntries[RCT2_GLOBAL(0x00F3EF88, uint16) - 1];
+			uint16 unk6 = scenery_entry->path_bit.var_06;
 
 			if ((unk6 & 0x80) && (mapElement->properties.path.type & 4)) {
 				RCT2_GLOBAL(RCT2_ADDRESS_GAME_COMMAND_ERROR_TEXT, rct_string_id) = STR_CANT_BUILD_THIS_ON_SLOPED_FOOTPATH;
@@ -224,13 +224,13 @@ static money32 footpath_element_update(int x, int y, rct_map_element *mapElement
 				return MONEY32_UNDEFINED;
 			}
 
-			RCT2_GLOBAL(0x00F3EFD9, money32) += RCT2_GLOBAL(unk + 10, money16);
+			RCT2_GLOBAL(0x00F3EFD9, money32) += scenery_entry->path_bit.price;
 		}
 
 		if (flags & (1 << 4))
 			return MONEY32_UNDEFINED;
 
-		if (!(flags & (1 << 6))) {
+		if (flags & (1 << 6)) {
 			if (mapElement->properties.path.additions & 0x0F) {
 				RCT2_GLOBAL(RCT2_ADDRESS_GAME_COMMAND_ERROR_TEXT, rct_string_id) = STR_NONE;
 				return MONEY32_UNDEFINED;
@@ -259,8 +259,8 @@ static money32 footpath_element_update(int x, int y, rct_map_element *mapElement
 		mapElement->properties.path.additions = (mapElement->properties.path.additions & 0xF0) | RCT2_GLOBAL(0x00F3EF88, uint8);
 		mapElement->flags &= ~0x20;
 		if (RCT2_GLOBAL(0x00F3EF88, uint16) != 0) {
-			uint8 *unk = RCT2_ADDRESS(0x009ADA50, uint8*)[RCT2_GLOBAL(0x00F3EF88, uint16)];
-			uint16 unk6 = RCT2_GLOBAL(unk + 6, uint16);
+			rct_scenery_entry* scenery_entry = g_pathBitSceneryEntries[RCT2_GLOBAL(0x00F3EF88, uint16) - 1];
+			uint16 unk6 = scenery_entry->path_bit.var_06;
 			if (unk6 & 1)
 				mapElement->properties.path.addition_status = 255;
 		}
@@ -288,7 +288,7 @@ static money32 footpath_element_update(int x, int y, rct_map_element *mapElement
 	return RCT2_GLOBAL(RCT2_ADDRESS_PARK_FLAGS, uint32) & PARK_FLAGS_NO_MONEY ? 0 : RCT2_GLOBAL(0x00F3EFD9, money32);
 }
 
-static money32 footpath_place_real(int type, int x, int y, int z, int slope, int flags)
+static money32 footpath_place_real(int type, int x, int y, int z, int slope, int flags, uint8 path_bit_type)
 {
 	rct_map_element *mapElement;
 
@@ -307,7 +307,7 @@ static money32 footpath_place_real(int type, int x, int y, int z, int slope, int
 
 	RCT2_GLOBAL(0x00F3EFD9, money32) = 0;
 	RCT2_GLOBAL(0x00F3EFA4, uint8) = 0;
-	RCT2_GLOBAL(0x00F3EF88, uint16) = 0; // di
+	RCT2_GLOBAL(0x00F3EF88, uint16) = path_bit_type; // di
 
 	if (x >= RCT2_GLOBAL(0x01358830, uint16) || y >= RCT2_GLOBAL(0x01358830, uint16)) {
 		RCT2_GLOBAL(RCT2_ADDRESS_GAME_COMMAND_ERROR_TEXT, rct_string_id) = STR_OFF_EDGE_OF_MAP;
@@ -344,7 +344,7 @@ void remove_banners_at_element(int x, int y, rct_map_element* mapElement){
 		if (map_element_get_type(mapElement) == MAP_ELEMENT_TYPE_PATH)return;
 		else if (map_element_get_type(mapElement) != MAP_ELEMENT_TYPE_BANNER)continue;
 
-		game_do_command(x, 1, y, mapElement->base_height | mapElement->properties.banner.position << 8, GAME_COMMAND_51, 0, 0);
+		game_do_command(x, 1, y, mapElement->base_height | mapElement->properties.banner.position << 8, GAME_COMMAND_REMOVE_BANNER, 0, 0);
 		mapElement--;
 	}
 }
@@ -393,7 +393,7 @@ void game_command_place_footpath(int *eax, int *ebx, int *ecx, int *edx, int *es
 	if (*ebx & (1 << 5))
 		RCT2_CALLFUNC_X(0x006A61DE, eax, ebx, ecx, edx, esi, edi, ebp);
 	else
-		*ebx = footpath_place_real((*edx >> 8) & 0xFF, *eax & 0xFFFF, *ecx & 0xFFFF, *edx & 0xFF, (*ebx >> 8) & 0xFF, *ebx & 0xFF);
+		*ebx = footpath_place_real((*edx >> 8) & 0xFF, *eax & 0xFFFF, *ecx & 0xFFFF, *edx & 0xFF, (*ebx >> 8) & 0xFF, *ebx & 0xFF, *edi & 0xFF);
 }
 
 /**
@@ -490,39 +490,39 @@ void footpath_provisional_update()
  */
 void footpath_get_coordinates_from_pos(int screenX, int screenY, int *x, int *y, int *direction, rct_map_element **mapElement)
 {
-	int z;
+	int z, interactionType;
 	rct_map_element *myMapElement;
 	rct_viewport *viewport;
-	get_map_coordinates_from_pos(screenX, screenY, 0xFFDF, x, y, &z, &myMapElement, &viewport);
-	if (z != 6 || !(viewport->flags & (VIEWPORT_FLAG_UNDERGROUND_INSIDE | VIEWPORT_FLAG_HIDE_BASE | VIEWPORT_FLAG_HIDE_VERTICAL))) {
-		get_map_coordinates_from_pos(screenX, screenY, 0xFFDE, x, y, &z, &myMapElement, &viewport);
-		if (z == 0) {
-			if (x != NULL) *x = 0x8000;
+	rct_xy16 map_pos = { 0 };
+
+	get_map_coordinates_from_pos(screenX, screenY, VIEWPORT_INTERACTION_MASK_FOOTPATH, &map_pos.x, &map_pos.y, &interactionType, &myMapElement, &viewport);
+	if (interactionType != VIEWPORT_INTERACTION_ITEM_FOOTPATH || !(viewport->flags & (VIEWPORT_FLAG_UNDERGROUND_INSIDE | VIEWPORT_FLAG_HIDE_BASE | VIEWPORT_FLAG_HIDE_VERTICAL))) {
+		get_map_coordinates_from_pos(screenX, screenY, VIEWPORT_INTERACTION_MASK_FOOTPATH & VIEWPORT_INTERACTION_MASK_TERRAIN, &map_pos.x, &map_pos.y, &interactionType, &myMapElement, &viewport);
+		if (interactionType == VIEWPORT_INTERACTION_ITEM_NONE) {
+			if (x != NULL) *x = (sint16)0x8000;
 			return;
 		}
 	}
 
-	RCT2_GLOBAL(0x00F1AD3E, uint8) = z;
+	RCT2_GLOBAL(0x00F1AD3E, uint8) = interactionType;
 	RCT2_GLOBAL(0x00F1AD30, rct_map_element*) = myMapElement;
 
-	if (z == 6) {
-		// mapElement appears to be a footpath
+	if (interactionType == VIEWPORT_INTERACTION_ITEM_FOOTPATH) {
 		z = myMapElement->base_height * 8;
 		if (myMapElement->properties.path.type & (1 << 2))
 			z += 8;
 	}
 
 	RCT2_GLOBAL(0x00F1AD3C, uint16) = z;
-	RCT2_GLOBAL(0x00F1AD34, sint16) = *x;
-	RCT2_GLOBAL(0x00F1AD36, sint16) = *y;
-	RCT2_GLOBAL(0x00F1AD38, sint16) = *x + 31;
-	RCT2_GLOBAL(0x00F1AD3A, sint16) = *y + 31;
+	RCT2_GLOBAL(0x00F1AD34, sint16) = map_pos.x;
+	RCT2_GLOBAL(0x00F1AD36, sint16) = map_pos.y;
+	RCT2_GLOBAL(0x00F1AD38, sint16) = map_pos.x + 31;
+	RCT2_GLOBAL(0x00F1AD3A, sint16) = map_pos.y + 31;
 
-	*x += 16;
-	*y += 16;
+	map_pos.x += 16;
+	map_pos.y += 16;
 
 	rct_xy16 start_vp_pos = screen_coord_to_viewport_coord(viewport, screenX, screenY);
-	rct_xy16 map_pos = { *x, *y };
 
 	for (int i = 0; i < 5; i++) {
 		if (RCT2_GLOBAL(0x00F1AD3E, uint8) != 6) {
@@ -572,10 +572,15 @@ void footpath_get_coordinates_from_pos(int screenX, int screenY, int *x, int *y,
 void footpath_bridge_get_info_from_pos(int screenX, int screenY, int *x, int *y, int *direction, rct_map_element **mapElement)
 {
 	// First check if we point at an entrance or exit. In that case, we would want the path coming from the entrance/exit.
-	int z;
+	int interactionType;
 	rct_viewport *viewport;
-	get_map_coordinates_from_pos(screenX, screenY, 0xFFFB, x, y, &z, mapElement, &viewport);
-	if (z == 3
+
+	rct_xy16 map_pos = { 0 };
+	get_map_coordinates_from_pos(screenX, screenY, VIEWPORT_INTERACTION_MASK_RIDE, &map_pos.x, &map_pos.y, &interactionType, mapElement, &viewport);
+	*x = map_pos.x;
+	*y = map_pos.y;
+
+	if (interactionType == VIEWPORT_INTERACTION_ITEM_RIDE
 		&& viewport->flags & (VIEWPORT_FLAG_UNDERGROUND_INSIDE | VIEWPORT_FLAG_HIDE_BASE | VIEWPORT_FLAG_HIDE_VERTICAL)
 		&& map_element_get_type(*mapElement) == MAP_ELEMENT_TYPE_ENTRANCE) {
 		int ebp = (*mapElement)->properties.entrance.type << 4;
@@ -589,8 +594,10 @@ void footpath_bridge_get_info_from_pos(int screenX, int screenY, int *x, int *y,
 		}
 	}
 	
-	get_map_coordinates_from_pos(screenX, screenY, 0xFFDA, x, y, &z, mapElement, &viewport);
-	if (z == 3 && map_element_get_type(*mapElement) == MAP_ELEMENT_TYPE_ENTRANCE) {
+	get_map_coordinates_from_pos(screenX, screenY, VIEWPORT_INTERACTION_MASK_RIDE & VIEWPORT_INTERACTION_MASK_FOOTPATH & VIEWPORT_INTERACTION_MASK_TERRAIN, &map_pos.x, &map_pos.y, &interactionType, mapElement, &viewport);
+	*x = map_pos.x;
+	*y = map_pos.y;
+	if (interactionType == VIEWPORT_INTERACTION_ITEM_RIDE && map_element_get_type(*mapElement) == MAP_ELEMENT_TYPE_ENTRANCE) {
 		int ebp = (*mapElement)->properties.entrance.type << 4;
 		int bl = (*mapElement)->properties.entrance.index & 0xF; // Seems to be always 0?
 		// The table at 0x0097B974 is only 48 bytes big

@@ -28,6 +28,7 @@
 #include "../world/park.h"
 #include "dropdown.h"
 #include "error.h"
+#include "../interface/themes.h"
 
 #define DISABLE_SIX_FLAGS_CHECKBOX
 
@@ -271,9 +272,6 @@ void window_editor_objective_options_open()
 	w->no_list_items = 0;
 	w->selected_list_item = -1;
 	RCT2_CALLPROC_X(0x00672609, 0, 0, 0, 0, (int)w, 0, 0);
-	w->colours[0] = 4;
-	w->colours[1] = 1;
-	w->colours[2] = 1;
 }
 
 static void window_editor_objective_options_set_pressed_tab(rct_window *w)
@@ -507,7 +505,7 @@ static void window_editor_objective_options_show_objective_dropdown(rct_window *
 		w->y + dropdownWidget->top,
 		dropdownWidget->bottom - dropdownWidget->top + 1,
 		w->colours[1],
-		0x80,
+		DROPDOWN_FLAG_STAY_OPEN,
 		numItems,
 		dropdownWidget->right - dropdownWidget->left - 3
 	);
@@ -537,7 +535,7 @@ static void window_editor_objective_options_show_climate_dropdown(rct_window *w)
 		w->y + dropdownWidget->top,
 		dropdownWidget->bottom - dropdownWidget->top + 1,
 		w->colours[1],
-		0x80,
+		DROPDOWN_FLAG_STAY_OPEN,
 		4,
 		dropdownWidget->right - dropdownWidget->left - 3
 	);
@@ -561,7 +559,7 @@ static void window_editor_objective_options_show_category_dropdown(rct_window *w
 		w->y + dropdownWidget->top,
 		dropdownWidget->bottom - dropdownWidget->top + 1,
 		w->colours[1],
-		0x80,
+		DROPDOWN_FLAG_STAY_OPEN,
 		5,
 		dropdownWidget->right - dropdownWidget->left - 3
 	);
@@ -834,6 +832,7 @@ static void window_editor_objective_options_main_invalidate()
 	rct_stex_entry *stex;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	stex = g_stexEntries[0];
 	if (stex == (rct_stex_entry*)0xFFFFFFFF)
@@ -1208,6 +1207,7 @@ static void window_editor_objective_options_rides_invalidate()
 	rct_widget *widgets;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	widgets = window_editor_objective_options_widgets[w->page];
 	if (w->widgets != widgets) {

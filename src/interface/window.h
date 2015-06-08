@@ -30,6 +30,11 @@
 
 struct rct_window;
 union rct_window_event;
+extern uint8 TextInputDescriptionArgs[8];
+extern char gTextBoxInput[512];
+extern int gMaxTextBoxInputLength;
+extern int gTextBoxFrameNo;
+extern bool gUsingWidgetTextBox;
 
 typedef void wndproc(struct rct_window*, union rct_window_event*);
 
@@ -45,6 +50,8 @@ typedef struct {
 	window_identifier window;
 	int widget_index;
 } widget_identifier;
+
+extern widget_identifier gCurrentTextBox;
 
 /**
  * Widget structure
@@ -402,7 +409,14 @@ enum {
 	WC_MAPGEN = 114,
 	WC_LOADSAVE = 115,
 	WC_LOADSAVE_OVERWRITE_PROMPT = 116,
-	WC_TITLE_OPTIONS = 117
+	WC_TITLE_OPTIONS = 117,
+	WC_LAND_RIGHTS = 118,
+	WC_THEMES = 119,
+
+	// Only used for colour schemes
+	WC_STAFF = 220,
+	WC_EDITOR_TRACK_BOTTOM_TOOLBAR = 221,
+	WC_EDITOR_SCENARIO_BOTTOM_TOOLBAR = 222,
 } WINDOW_CLASS;
 
 enum PROMPT_MODE {
@@ -447,6 +461,7 @@ void window_close_by_class(rct_windowclass cls);
 void window_close_by_number(rct_windowclass cls, rct_windownumber number);
 void window_close_top();
 void window_close_all();
+void window_close_all_except_class(rct_windowclass cls);
 rct_window *window_find_by_class(rct_windowclass cls);
 rct_window *window_find_by_number(rct_windowclass cls, rct_windownumber number);
 rct_window *window_find_from_point(int x, int y);
@@ -454,6 +469,7 @@ int window_find_widget_from_point(rct_window *w, int x, int y);
 void window_invalidate(rct_window *window);
 void window_invalidate_by_class(rct_windowclass cls);
 void window_invalidate_by_number(rct_windowclass cls, rct_windownumber number);
+void window_invalidate_all();
 void widget_invalidate(rct_window *w, int widgetIndex);
 void widget_invalidate_by_class(rct_windowclass cls, int widgetIndex);
 void widget_invalidate_by_number(rct_windowclass cls, rct_windownumber number, int widgetIndex);
@@ -515,6 +531,7 @@ void window_track_list_open(ride_list_item item);
 void window_clear_scenery_open();
 void window_land_open();
 void window_water_open();
+void window_land_rights_open();
 void window_staff_list_open();
 void window_guest_list_open();
 void window_guest_list_open_with_filter(int type, int index);
@@ -555,9 +572,11 @@ void window_music_credits_open();
 void window_publisher_credits_open();
 void window_track_manage_open();
 void window_viewport_open();
+void window_themes_open();
 void window_text_input_open(rct_window* call_w, int call_widget, rct_string_id title, rct_string_id description, rct_string_id existing_text, uint32 existing_args, int maxLength);
+void window_text_input_raw_open(rct_window* call_w, int call_widget, rct_string_id title, rct_string_id description, utf8string existing_text, int maxLength);
 rct_window *window_mapgen_open();
-rct_window *window_loadsave_open(int type);
+rct_window *window_loadsave_open(int type, char *defaultName);
 
 void window_editor_main_open();
 void window_editor_bottom_toolbar_open();
@@ -584,11 +603,21 @@ void window_event_resize_call(rct_window* w);
 void window_event_mouse_down_call(rct_window* w, int widgetIndex);
 void window_event_invalidate_call(rct_window* w);
 void window_event_update_call(rct_window *w);
+void window_event_textinput_call(rct_window *w, int widgetIndex, char *text);
 
 void sub_6EA73F();
+void textinput_cancel();
 
 void window_move_and_snap(rct_window *w, int newWindowX, int newWindowY, int snapProximity);
 int window_can_resize(rct_window *w);
+
+void window_start_textbox(rct_window *call_w, int call_widget, rct_string_id existing_text, uint32 existing_args, int maxLength);
+void window_cancel_textbox();
+void window_update_textbox_caret();
+void window_update_textbox();
+
+//Cheat: in-game land ownership editor
+void toggle_ingame_land_ownership_editor();
 
 #ifdef _MSC_VER
 	#define window_get_register(w)														\
@@ -653,6 +682,13 @@ int window_can_resize(rct_window *w);
 	#define window_cursor_set_registers(cursorId)										\
 		__asm mov ebx, cursorId
 
+	#define window_tooltip_get_registers(w, widgetIndex)								\
+		__asm mov widgetIndex, ax														\
+		__asm mov w, esi
+
+	#define window_tooltip_set_registers(value)											\
+		__asm mov ax, value
+
 #else
 	#define window_get_register(w)														\
 		__asm__ ( "mov %["#w"], esi " : [w] "+m" (w) );
@@ -715,6 +751,13 @@ int window_can_resize(rct_window *w);
 
 	#define window_cursor_set_registers(cursorId)										\
 		__asm__ ( "mov ebx, %[cursorId] " : [cursorId] "+m" (cursorId) );
+
+	#define window_tooltip_get_registers(w, widgetIndex)								\
+		__asm__ ( "mov %["#widgetIndex"], ax " : [widgetIndex] "+m" (widgetIndex) );	\
+		__asm__ ( "mov %["#w"], esi " : [w] "+m" (w) );
+
+	#define window_tooltip_set_registers(value)											\
+		__asm__ ( "mov ax, %["#value"] " : [value] "+m" (value) );
 #endif
 
 #endif

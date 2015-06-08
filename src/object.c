@@ -396,7 +396,7 @@ int object_chunk_load_image_directory(uint8_t** chunk)
 
 	RCT2_GLOBAL(RCT2_ADDRESS_TOTAL_NO_IMAGES, uint32_t) = no_images + image_start_no;
 
-	rct_g1_element* g1_dest = &RCT2_ADDRESS(RCT2_ADDRESS_G1_ELEMENTS, rct_g1_element)[image_start_no];
+	rct_g1_element* g1_dest = &g1Elements[image_start_no];
 
 	// After length of data is the start of all g1 element structs
 	rct_g1_element* g1_source = (rct_g1_element*)(*chunk);
@@ -677,7 +677,7 @@ int paint_ride_entry(int flags, int ebx, int ecx, int edx, rct_drawpixelinfo* dp
 
 		int di = ride_type->ride_type[0] | (ride_type->ride_type[1] << 8) | (ride_type->ride_type[2] << 16);
 
-		if (ride_type->var_008 & 0x1000) di |= 0x1000000;
+		if (ride_type->flags & RIDE_ENTRY_FLAG_SEPERATE_RIDE_NAME) di |= 0x1000000;
 
 		RCT2_GLOBAL(0xF433DD, uint32) = di;
 		return 0;// flags;
@@ -755,7 +755,7 @@ int paint_ride_entry(int flags, int ebx, int ecx, int edx, rct_drawpixelinfo* dp
 			int width = w->x + w->width - x - 4;
 
 			int format_args = ride_type->description;
-			if (!(ride_type->var_008 & 0x1000))
+			if (!(ride_type->flags & RIDE_ENTRY_FLAG_SEPERATE_RIDE_NAME))
 			{
 				format_args = ride_type->ride_type[0];
 				if ((format_args & 0xFF) == 0xFF)
@@ -907,10 +907,11 @@ int paint_large_scenery(int flags, int ebx, int ecx, int edx, rct_drawpixelinfo*
 			chunk += 1038;
 		}
 
-		scenery_type->large_scenery.var_0C = (uint32)chunk;
+		scenery_type->large_scenery.tiles = (rct_large_scenery_tile*)chunk;
 
+		// skip over large scenery tiles
 		while (*((uint16*)chunk) != 0xFFFF){
-			chunk += 9;
+			chunk += sizeof(rct_large_scenery_tile);
 		}
 
 		chunk += 2;
@@ -937,7 +938,7 @@ int paint_large_scenery(int flags, int ebx, int ecx, int edx, rct_drawpixelinfo*
 		rct_scenery_entry* scenery_type = (rct_scenery_entry*)esi;
 		scenery_type->name = 0;
 		scenery_type->image = 0;
-		scenery_type->large_scenery.var_0C = 0;
+		scenery_type->large_scenery.tiles = 0;
 		scenery_type->large_scenery.scenery_tab_id = 0;
 		scenery_type->large_scenery.var_12 = 0;
 		scenery_type->large_scenery.var_16 = 0;

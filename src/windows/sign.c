@@ -32,6 +32,7 @@
 #include "error.h"
 #include "dropdown.h"
 #include "../drawing/drawing.h"
+#include "../interface/themes.h"
 
 #define WW 113
 #define WH 96
@@ -163,9 +164,6 @@ void window_sign_open(rct_windownumber number)
 
 	w->number = number;
 	window_init_scroll_widgets(w);
-	w->colours[0] = 24;
-	w->colours[1] = 24;
-	w->colours[2] = 24;
 
 	int view_x = gBanners[w->number].x << 5;
 	int view_y = gBanners[w->number].y << 5;
@@ -174,9 +172,7 @@ void window_sign_open(rct_windownumber number)
 
 	while (1){
 		if (map_element_get_type(map_element) == MAP_ELEMENT_TYPE_SCENERY_MULTIPLE) {
-			int ebx = map_element->properties.scenerymultiple.type;
-			ebx |= (map_element->properties.scenerymultiple.index & 0x3) << 8;
-			rct_scenery_entry* scenery_entry = g_largeSceneryEntries[ebx];
+			rct_scenery_entry* scenery_entry = g_largeSceneryEntries[map_element->properties.scenerymultiple.type & MAP_ELEMENT_LARGE_TYPE_MASK];
 			if (scenery_entry->large_scenery.var_11 != 0xFF){
 				int id = (map_element->type & 0xC0) |
 					((map_element->properties.scenerymultiple.colour[0] & 0xE0) >> 2) |
@@ -242,9 +238,7 @@ static void window_sign_mouseup()
 	case WIDX_SIGN_DEMOLISH:
 		while (1){
 			if (map_element_get_type(map_element) == MAP_ELEMENT_TYPE_SCENERY_MULTIPLE) {
-				int ebx = map_element->properties.scenerymultiple.type;
-				ebx |= (map_element->properties.scenerymultiple.index & 0x3) << 8;
-				rct_scenery_entry* scenery_entry = g_largeSceneryEntries[ebx];
+				rct_scenery_entry* scenery_entry = g_largeSceneryEntries[map_element->properties.scenerymultiple.type & MAP_ELEMENT_LARGE_TYPE_MASK];
 				if (scenery_entry->large_scenery.var_11 != 0xFF){
 					int id = (map_element->type & 0xC0) |
 						((map_element->properties.scenerymultiple.colour[0] & 0xE0) >> 2) |
@@ -259,8 +253,8 @@ static void window_sign_mouseup()
 			x,
 			1 | ((map_element->type&0x3) << 8),
 			y,
-			map_element->base_height | ((map_element->properties.scenerymultiple.index >> 2) << 8),
-			GAME_COMMAND_44, 
+			map_element->base_height | ((map_element->properties.scenerymultiple.type >> 10) << 8),
+			GAME_COMMAND_REMOVE_LARGE_SCENERY, 
 			0, 
 			0);
 		break;
@@ -323,9 +317,7 @@ static void window_sign_dropdown()
 
 	while (1){
 		if (map_element_get_type(map_element) == MAP_ELEMENT_TYPE_SCENERY_MULTIPLE) {
-			int ebx = map_element->properties.scenerymultiple.type;
-			ebx |= (map_element->properties.scenerymultiple.index & 0x3) << 8;
-			rct_scenery_entry* scenery_entry = g_largeSceneryEntries[ebx];
+			rct_scenery_entry* scenery_entry = g_largeSceneryEntries[map_element->properties.scenerymultiple.type & MAP_ELEMENT_LARGE_TYPE_MASK];
 			if (scenery_entry->large_scenery.var_11 != 0xFF){
 				int id = (map_element->type & 0xC0) |
 					((map_element->properties.scenerymultiple.colour[0] & 0xE0) >> 2) |
@@ -337,7 +329,7 @@ static void window_sign_dropdown()
 		map_element++;
 	}
 
-	int edx = map_element->base_height | ((map_element->properties.scenerymultiple.index >> 2) << 8);
+	int edx = map_element->base_height | ((map_element->properties.scenerymultiple.type >> 10) << 8);
 	int ebp = w->list_information_type | (w->var_492 << 8);
 	int ebx = (map_element->type & 0x3) << 8;
 	RCT2_CALLPROC_X(0x6B9B05, x, ebx, y, edx, 0, w->number, ebp);
@@ -393,6 +385,7 @@ static void window_sign_invalidate()
 	rct_window* w;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	rct_widget* main_colour_btn = &window_sign_widgets[WIDX_MAIN_COLOR];
 	rct_widget* text_colour_btn = &window_sign_widgets[WIDX_TEXT_COLOR];
@@ -501,7 +494,7 @@ void window_sign_small_open(rct_windownumber number){
 
 	while (1){
 		if (map_element_get_type(map_element) == MAP_ELEMENT_TYPE_FENCE) {
-			rct_scenery_entry* scenery_entry = g_wallSceneryEntries[map_element->properties.fence.slope];
+			rct_scenery_entry* scenery_entry = g_wallSceneryEntries[map_element->properties.fence.type];
 			if (scenery_entry->wall.var_0D != 0xFF){
 				if (map_element->properties.fence.item[0] == w->number)
 					break;
@@ -515,7 +508,7 @@ void window_sign_small_open(rct_windownumber number){
 
 	w->list_information_type = map_element->properties.fence.item[1] & 0x1F;
 	w->var_492 = (map_element->properties.fence.item[1] >> 5) | ((map_element->flags&0x60) >> 2);
-	w->var_48C = map_element->properties.fence.slope;
+	w->var_48C = map_element->properties.fence.type;
 
 	view_x += 16;
 	view_y += 16;
@@ -564,7 +557,7 @@ static void window_sign_small_mouseup()
 	case WIDX_SIGN_DEMOLISH:
 		while (1){
 			if (map_element_get_type(map_element) == MAP_ELEMENT_TYPE_FENCE) {
-				rct_scenery_entry* scenery_entry = g_wallSceneryEntries[map_element->properties.fence.slope];
+				rct_scenery_entry* scenery_entry = g_wallSceneryEntries[map_element->properties.fence.type];
 				if (scenery_entry->wall.var_0D != 0xFF){
 					if (map_element->properties.fence.item[0] == w->number)
 						break;
@@ -626,7 +619,7 @@ static void window_sign_small_dropdown()
 
 	while (1){
 		if (map_element_get_type(map_element) == MAP_ELEMENT_TYPE_FENCE) {
-			rct_scenery_entry* scenery_entry = g_wallSceneryEntries[map_element->properties.fence.slope];
+			rct_scenery_entry* scenery_entry = g_wallSceneryEntries[map_element->properties.fence.type];
 			if (scenery_entry->wall.var_0D != 0xFF){
 				if (map_element->properties.fence.item[0] == w->number)
 					break;
@@ -641,7 +634,7 @@ static void window_sign_small_dropdown()
 		((w->var_492 & 0x7) << 5);
 	map_element->flags |= ((w->var_492 & 0x18) << 2);
 
-	sub_6EC847(x, y, map_element->base_height * 8, map_element->clearance_height * 8);
+	gfx_invalidate_viewport_tile(x, y, map_element->base_height * 8, map_element->clearance_height * 8);
 	window_invalidate(w);
 }
 
@@ -651,6 +644,7 @@ static void window_sign_small_invalidate()
 	rct_window* w;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	rct_widget* main_colour_btn = &window_sign_widgets[WIDX_MAIN_COLOR];
 	rct_widget* text_colour_btn = &window_sign_widgets[WIDX_TEXT_COLOR];

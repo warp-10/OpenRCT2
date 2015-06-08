@@ -28,6 +28,8 @@
 #include "../scenario.h"
 #include "../title.h"
 #include "../windows/error.h"
+#include "../interface/themes.h"
+#include "../util/util.h"
 
 #pragma region Widgets
 
@@ -65,6 +67,7 @@ static void window_loadsave_scrollmousedown();
 static void window_loadsave_scrollmouseover();
 static void window_loadsave_textinput();
 static void window_loadsave_tooltip();
+static void window_loadsave_invalidate();
 static void window_loadsave_paint();
 static void window_loadsave_scrollpaint();
 
@@ -94,7 +97,7 @@ static void* window_loadsave_events[] = {
 	window_loadsave_tooltip,
 	window_loadsave_emptysub,
 	window_loadsave_emptysub,
-	window_loadsave_emptysub, 
+	window_loadsave_invalidate,
 	window_loadsave_paint,
 	window_loadsave_scrollpaint
 };
@@ -110,6 +113,7 @@ int _listItemsCount = 0;
 loadsave_list_item *_listItems = NULL;
 char _directory[MAX_PATH];
 char _extension[32];
+char *_defaultName = NULL;
 int _loadsaveType;
 int _type;
 
@@ -120,12 +124,13 @@ static int hasExtension(char *path, char *extension);
 
 static rct_window *window_overwrite_prompt_open(const char *name, const char *path);
 
-rct_window *window_loadsave_open(int type)
+rct_window *window_loadsave_open(int type, char *defaultName)
 {
 	char path[MAX_PATH], *ch;
 	int includeNewItem;
 	rct_window* w;
 	_type = type;
+	_defaultName = defaultName;
 
 	w = window_bring_to_front_by_class(WC_LOADSAVE);
 	if (w == NULL) {
@@ -255,6 +260,10 @@ static void window_loadsave_mouseup()
 		char filename[MAX_PATH], filter[MAX_PATH];
 		int result;
 
+		strcpy(filename, _directory);
+		if (_type & LOADSAVETYPE_SAVE){
+			strcat(filename, (char*)RCT2_ADDRESS_SCENARIO_NAME);
+		}
 		memset(filter, '\0', MAX_PATH);
 		strncpy(filter, "*", MAX_PATH);
 		strncat(filter, _extension, MAX_PATH);
@@ -339,7 +348,8 @@ static void window_loadsave_scrollmousedown()
 		char *templateString;
 
 		templateString = (char*)language_get_string(templateStringId);
-		strcpy(templateString, (char*)RCT2_ADDRESS_SCENARIO_NAME);
+		strcpy(templateString, _defaultName);
+
 		window_text_input_open(w, WIDX_SCROLL, STR_NONE, 2710, templateStringId, 0, 64);
 	} else {
 		if (_listItems[selectedItem].path[strlen(_listItems[selectedItem].path) - 1] == platform_get_path_separator()){
@@ -418,6 +428,14 @@ static void window_loadsave_textinput()
 static void window_loadsave_tooltip()
 {
 	RCT2_GLOBAL(0x013CE952, uint16) = STR_LIST;
+}
+
+static void window_loadsave_invalidate()
+{
+	rct_window *w;
+
+	window_get_register(w);
+	colour_scheme_update(w);
 }
 
 static void window_loadsave_paint()
@@ -605,7 +623,7 @@ static void window_loadsave_select(rct_window *w, const char *path)
 			if (scenario_save((char*)path, gConfigGeneral.save_plugin_data ? 1 : 0)) {
 				window_close(w);
 
-				game_do_command(0, 1047, 0, -1, GAME_COMMAND_0, 0, 0);
+				game_do_command(0, 1047, 0, -1, GAME_COMMAND_SET_RIDE_APPEARANCE, 0, 0);
 				gfx_invalidate_screen();
 			}
 			else {
@@ -682,6 +700,7 @@ static rct_widget window_overwrite_prompt_widgets[] = {
 
 static void window_overwrite_prompt_emptysub(){}
 static void window_overwrite_prompt_mouseup();
+static void window_overwrite_prompt_invalidate();
 static void window_overwrite_prompt_paint();
 
 static void* window_overwrite_prompt_events[] = {
@@ -710,7 +729,7 @@ static void* window_overwrite_prompt_events[] = {
 	window_overwrite_prompt_emptysub,
 	window_overwrite_prompt_emptysub,
 	window_overwrite_prompt_emptysub,
-	window_overwrite_prompt_emptysub,
+	window_overwrite_prompt_invalidate,
 	window_overwrite_prompt_paint,
 	window_overwrite_prompt_emptysub
 };
@@ -755,6 +774,14 @@ static void window_overwrite_prompt_mouseup()
 	case WIDX_OVERWRITE_CLOSE:
 		window_close(w);
 	}
+}
+
+static void window_overwrite_prompt_invalidate()
+{
+	rct_window *w;
+
+	window_get_register(w);
+	colour_scheme_update(w);
 }
 
 static void window_overwrite_prompt_paint()

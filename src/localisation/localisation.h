@@ -27,6 +27,7 @@
 #include "string_ids.h"
 
 void format_string(char *dest, rct_string_id format, void *args);
+void format_string_raw(char *dest, char *src, void *args);
 void generate_string_file();
 void error_string_quit(int error, rct_string_id format);
 int get_string_length(char* buffer);
@@ -34,6 +35,7 @@ int get_string_length(char* buffer);
 void user_string_clear_all();
 rct_string_id user_string_allocate(int base, const char *text);
 void user_string_free(rct_string_id id);
+bool is_user_string_id(rct_string_id stringId);
 
 int win1252_to_utf8(utf8string dst, const char *src, int maxBufferLength);
 

@@ -19,6 +19,7 @@
  *****************************************************************************/
 
 #include "../addresses.h"
+#include "../config.h"
 #include "../localisation/date.h"
 #include "../localisation/localisation.h"
 #include "../interface/widget.h"
@@ -30,6 +31,7 @@
 #include "../world/climate.h"
 #include "../world/park.h"
 #include "../world/sprite.h"
+#include "../interface/themes.h"
 
 enum WINDOW_GAME_BOTTOM_TOOLBAR_WIDGET_IDX {
 	WIDX_LEFT_OUTSET,
@@ -148,9 +150,10 @@ void window_game_bottom_toolbar_open()
 
 	window->frame_no = 0;
 	window_init_scroll_widgets(window);
-	window->colours[0] = 140;
-	window->colours[1] = 140;
-	window->colours[2] = 0;
+
+	// Reset the middle widget to not show by default.
+	// If it is required to be shown news_update will reshow it.
+	window_game_bottom_toolbar_widgets[WIDX_MIDDLE_OUTSET].type = WWT_EMPTY;
 }
 
 /**
@@ -212,31 +215,20 @@ static void window_game_bottom_toolbar_mouseup()
 static void window_game_bottom_toolbar_tooltip()
 {
 	int month, day;
-	short tool_tip_index;
+	short widgetIndex, result;
 	rct_window *w;
 
-	#ifdef _MSC_VER
-	__asm mov tool_tip_index, ax
-	#else
-	__asm__ ( "mov %[tool_tip_index], ax " : [tool_tip_index] "+m" (tool_tip_index) );
-	#endif
+	window_tooltip_get_registers(w, widgetIndex);
 
-	#ifdef _MSC_VER
-	__asm mov w, esi
-	#else
-	__asm__ ( "mov %[w], esi " : [w] "+m" (w) );
-	#endif
-
-
-	switch (tool_tip_index) {
+	switch (widgetIndex) {
 	case WIDX_MONEY:
 		RCT2_GLOBAL(0x013CE952, int) = RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_PROFIT, sint32);
 		RCT2_GLOBAL(0x013CE956, int) = RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_PARK_VALUE, sint32);
-		tool_tip_index = 0;
+		result = 0;
 		break;
 	case WIDX_PARK_RATING:
 		RCT2_GLOBAL(0x013CE952, short) = RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_PARK_RATING, sint16);
-		tool_tip_index = 0;
+		result = 0;
 		break;
 	case WIDX_DATE:
 		month = RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_MONTH_YEAR, sint16) & 7;
@@ -244,15 +236,11 @@ static void window_game_bottom_toolbar_tooltip()
 		
 		RCT2_GLOBAL(0x013CE952, short) = STR_DATE_DAY_1 + day;
 		RCT2_GLOBAL(0x013CE954, short) = STR_MONTH_MARCH + month;
-		tool_tip_index = 0;
+		result = 0;
 		break;
 	}
 
-#ifdef _MSC_VER
-	__asm mov  ax, tool_tip_index
-#else
-	__asm__("mov ax, %[tool_tip_index] " :[tool_tip_index] "+m" (tool_tip_index));
-#endif
+	window_tooltip_set_registers(result);
 }
 
 /**
@@ -266,6 +254,7 @@ static void window_game_bottom_toolbar_invalidate()
 	rct_news_item *newsItem;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	// Anchor the middle and right panel to the right
 	x = RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_WIDTH, sint16);
@@ -432,7 +421,7 @@ static void window_game_bottom_toolbar_draw_left_panel(rct_drawpixelinfo *dpi, r
 	window_game_bottom_toolbar_draw_park_rating(
 		dpi,
 		w,
-		14,
+		w->colours[3],
 		w->x + window_game_bottom_toolbar_widgets[WIDX_PARK_RATING].left + 11,
 		w->y + window_game_bottom_toolbar_widgets[WIDX_PARK_RATING].top,
 		max(10, ((RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_PARK_RATING, sint16) / 4) * 263) / 256)
@@ -481,13 +470,19 @@ static void window_game_bottom_toolbar_draw_right_panel(rct_drawpixelinfo *dpi, 
 	int year = date_get_year(RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_MONTH_YEAR, sint16)) + 1;
 	int month = date_get_month(RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_MONTH_YEAR, sint16) & 7);
 	int day = ((RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_MONTH_TICKS, uint16) * days_in_month[month]) >> 16) & 0xFF;
-		
-	RCT2_GLOBAL(0x013CE952, short) = STR_DATE_DAY_1 + day;
-	RCT2_GLOBAL(0x013CE954, short) = month;
+	if (gConfigGeneral.date_format) {
+		RCT2_GLOBAL(0x013CE952, short) = month;
+		RCT2_GLOBAL(0x013CE954, short) = STR_DATE_DAY_1 + day;
+	}
+	else {
+		RCT2_GLOBAL(0x013CE952, short) = STR_DATE_DAY_1 + day;
+		RCT2_GLOBAL(0x013CE954, short) = month;
+	}
+	
 	RCT2_GLOBAL(0x013CE956, short) = year;
 	gfx_draw_string_centred(
 		dpi,
-		2737,
+		(gConfigGeneral.date_format ? 5160 : 2737),
 		x,
 		y,
 		(RCT2_GLOBAL(RCT2_ADDRESS_CURSOR_OVER_WINDOWCLASS, rct_windowclass) == 2 && RCT2_GLOBAL(RCT2_ADDRESS_CURSOR_OVER_WIDGETINDEX, sint32) == WIDX_DATE ? 2 : w->colours[0] & 0x7F),

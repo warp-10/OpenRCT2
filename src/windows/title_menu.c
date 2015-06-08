@@ -19,6 +19,7 @@
  *****************************************************************************/
 
 #include "../addresses.h"
+#include "../config.h"
 #include "../editor.h"
 #include "../game.h"
 #include "../interface/widget.h"
@@ -27,6 +28,7 @@
 #include "../sprites.h"
 #include "../tutorial.h"
 #include "dropdown.h"
+#include "../interface/themes.h"
 
 enum {
 	WIDX_START_NEW_GAME,
@@ -49,6 +51,7 @@ static void window_title_menu_mousedown(int widgetIndex, rct_window*w, rct_widge
 static void window_title_menu_dropdown();
 static void window_title_menu_unknown17();
 static void window_title_menu_paint();
+static void window_title_menu_invalidate();
 
 static void* window_title_menu_events[] = {
 	window_title_menu_emptysub,
@@ -76,7 +79,7 @@ static void* window_title_menu_events[] = {
 	window_title_menu_emptysub,
 	window_title_menu_unknown17,
 	window_title_menu_emptysub,
-	window_title_menu_emptysub,
+	window_title_menu_invalidate,
 	window_title_menu_paint,
 	window_title_menu_emptysub
 };
@@ -100,9 +103,6 @@ void window_title_menu_open()
 	window->enabled_widgets |= (8 | 4 | 2 | 1);
 	window_init_scroll_widgets(window);
 	window->flags |= 16;
-	window->colours[0] = 140;
-	window->colours[1] = 140;
-	window->colours[2] = 140;
 }
 
 static void window_title_menu_mouseup()
@@ -130,7 +130,7 @@ static void window_title_menu_mousedown(int widgetIndex, rct_window*w, rct_widge
 			w->y + widget->top,
 			widget->bottom - widget->top + 1,
 			w->colours[0] | 0x80,
-			0x80,
+			DROPDOWN_FLAG_STAY_OPEN,
 			3
 		);
 	} else if (widgetIndex == WIDX_GAME_TOOLS) {
@@ -143,7 +143,7 @@ static void window_title_menu_mousedown(int widgetIndex, rct_window*w, rct_widge
 			w->y + widget->top,
 			widget->bottom - widget->top + 1,
 			w->colours[0] | 0x80,
-			0x80,
+			DROPDOWN_FLAG_STAY_OPEN,
 			4
 		);
 	}
@@ -189,4 +189,11 @@ static void window_title_menu_paint()
 	window_paint_get_registers(w, dpi);
 
 	window_draw_widgets(w, dpi);
+}
+
+static void window_title_menu_invalidate()
+{
+	rct_window *w;
+	window_get_register(w);
+	colour_scheme_update(w);
 }

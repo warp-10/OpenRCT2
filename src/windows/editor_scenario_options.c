@@ -26,6 +26,7 @@
 #include "../sprites.h"
 #include "error.h"
 #include "dropdown.h"
+#include "../interface/themes.h"
 
 #pragma region Widgets
 
@@ -352,9 +353,6 @@ void window_editor_scenario_options_open()
 	window_init_scroll_widgets(w);
 	w->var_4AE = 0;
 	w->page = 0;
-	w->colours[0] = 4;
-	w->colours[1] = 1;
-	w->colours[2] = 1;
 }
 
 static void window_editor_scenario_options_set_pressed_tab(rct_window *w)
@@ -580,6 +578,7 @@ static void window_editor_scenario_options_financial_invalidate()
 	int i;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	widgets = window_editor_scenario_options_widgets[w->page];
 	if (w->widgets != widgets) {
@@ -820,6 +819,7 @@ static void window_editor_scenario_options_guests_invalidate()
 	rct_widget *widgets;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	widgets = window_editor_scenario_options_widgets[w->page];
 	if (w->widgets != widgets) {
@@ -1049,7 +1049,7 @@ static void window_editor_scenario_options_park_mousedown(int widgetIndex, rct_w
 			w->y + dropdownWidget->top,
 			dropdownWidget->bottom - dropdownWidget->top - 1,
 			w->colours[1],
-			0x80,
+			DROPDOWN_FLAG_STAY_OPEN,
 			2,
 			dropdownWidget->right - dropdownWidget->left - 3
 		);
@@ -1110,6 +1110,7 @@ static void window_editor_scenario_options_park_invalidate()
 	uint64 pressedWidgets;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	widgets = window_editor_scenario_options_widgets[w->page];
 	if (w->widgets != widgets) {
@@ -1225,7 +1226,7 @@ static void window_editor_scenario_options_park_paint()
 	
 	if (w->widgets[WIDX_ENTRY_PRICE].type != WWT_EMPTY) {
 		// Entry price label
-		x = w->x + w->widgets[WIDX_ENTRY_PRICE].right + 8;
+		x = w->x + w->widgets[WIDX_PAY_FOR_PARK_OR_RIDES].right + 8;
 		y = w->y + w->widgets[WIDX_ENTRY_PRICE].top;
 		gfx_draw_string_left(dpi, 3281, NULL, 0, x, y);
 

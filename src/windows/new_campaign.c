@@ -19,6 +19,7 @@
  *****************************************************************************/
 
 #include "../addresses.h"
+#include "../config.h"
 #include "../game.h"
 #include "../localisation/localisation.h"
 #include "../interface/widget.h"
@@ -26,6 +27,7 @@
 #include "../management/marketing.h"
 #include "../ride/ride.h"
 #include "dropdown.h"
+#include "../interface/themes.h"
 
 #define SELECTED_RIDE_UNDEFINED ((uint16)0xFFFF)
 
@@ -154,9 +156,6 @@ void window_new_campaign_open(sint16 campaignType)
 		(1 << WIDX_WEEKS_INCREASE_BUTTON) |
 		(1 << WIDX_WEEKS_DECREASE_BUTTON);
 	window_init_scroll_widgets(w);
-	w->colours[0] = 19;
-	w->colours[1] = 19;
-	w->colours[2] = 19;
 
 	window_new_campaign_widgets[WIDX_TITLE].image = STR_MARKETING_VOUCHERS_FOR_FREE_ENTRY_TO_THE_PARK + campaignType;
 
@@ -273,7 +272,7 @@ static void window_new_campaign_mousedown(int widgetIndex, rct_window *w, rct_wi
 					w->y + dropdownWidget->top,
 					dropdownWidget->bottom - dropdownWidget->top + 1,
 					w->colours[1],
-					0x80,
+					DROPDOWN_FLAG_STAY_OPEN,
 					numItems,
 					dropdownWidget->right - dropdownWidget->left - 3
 				);
@@ -295,7 +294,7 @@ static void window_new_campaign_mousedown(int widgetIndex, rct_window *w, rct_wi
 				w->y + dropdownWidget->top,
 				dropdownWidget->bottom - dropdownWidget->top + 1,
 				w->colours[1],
-				0x80,
+				DROPDOWN_FLAG_STAY_OPEN,
 				numItems,
 				dropdownWidget->right - dropdownWidget->left - 3
 			);
@@ -347,6 +346,7 @@ static void window_new_campaign_invalidate()
 	rct_window *w;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	window_new_campaign_widgets[WIDX_RIDE_LABEL].type = WWT_EMPTY;
 	window_new_campaign_widgets[WIDX_RIDE_DROPDOWN].type = WWT_EMPTY;

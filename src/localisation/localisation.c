@@ -176,6 +176,8 @@ void format_comma_separated_integer(char **dest, long long value)
 	char *dst = *dest;
 	char *finish;
 	char tmp;
+	const char *commaMark = language_get_string(5151);
+	const char *ch;
 
 	// Negative sign
 	if (value < 0) {
@@ -194,7 +196,11 @@ void format_comma_separated_integer(char **dest, long long value)
 			// Append group seperator
 			if (groupIndex == 3) {
 				groupIndex = 0;
-				*dst++ = ',';
+				
+				ch = commaMark;
+				while (*ch != 0) {
+					*dst++ = *ch++;
+				}
 			}
 
 			digit = value % 10;
@@ -224,6 +230,9 @@ void format_comma_separated_fixed_2dp(char **dest, long long value)
 	char *dst = *dest;
 	char *finish;
 	char tmp;
+	const char *commaMark = language_get_string(5151);
+	const char *decimalMark = language_get_string(5152);
+	const char *ch;
 
 	// Negative sign
 	if (value < 0) {
@@ -240,7 +249,11 @@ void format_comma_separated_fixed_2dp(char **dest, long long value)
 	digit = value % 10;
 	value /= 10;
 	*dst++ = '0' + digit;
-	*dst++ = '.';
+
+	ch = decimalMark;
+	while (*ch != 0) {
+		*dst++ = *ch++;
+	}
 
 	if (value == 0) {
 		*dst++ = '0';
@@ -251,7 +264,11 @@ void format_comma_separated_fixed_2dp(char **dest, long long value)
 			// Append group seperator
 			if (groupIndex == 3) {
 				groupIndex = 0;
-				*dst++ = ',';
+				
+				ch = commaMark;
+				while (*ch != 0) {
+					*dst++ = *ch++;
+				}
 			}
 
 			digit = value % 10;
@@ -351,7 +368,7 @@ void format_date(char **dest, uint16 value)
 	(*dest)--;
 }
 
-void format_length(char **dest, uint16 value)
+void format_length(char **dest, sint16 value)
 {
 	rct_string_id stringId = 2733;
 
@@ -362,6 +379,7 @@ void format_length(char **dest, uint16 value)
 
 	uint16 *argRef = &value;
 	format_string_part(dest, stringId, (char**)&argRef);
+	(*dest)--;
 }
 
 void format_velocity(char **dest, uint16 value)
@@ -375,6 +393,7 @@ void format_velocity(char **dest, uint16 value)
 
 	uint16 *argRef = &value;
 	format_string_part(dest, stringId, (char**)&argRef);
+	(*dest)--;
 }
 
 void format_duration(char **dest, uint16 value)
@@ -397,6 +416,7 @@ void format_duration(char **dest, uint16 value)
 		stringId++;
 
 	format_string_part(dest, stringId, (char**)&argsRef);
+	(*dest)--;
 }
 
 void format_realtime(char **dest, uint16 value)
@@ -419,6 +439,7 @@ void format_realtime(char **dest, uint16 value)
 		stringId++;
 
 	format_string_part(dest, stringId, (char**)&argsRef);
+	(*dest)--;
 }
 
 void format_string_code(unsigned char format_code, char **dest, char **args)
@@ -632,6 +653,11 @@ void format_string(char *dest, rct_string_id format, void *args)
 {
 	// RCT2_CALLPROC_X(0x006C2555, format, 0, (int)args, 0, 0, (int)dest, 0);
 	format_string_part(&dest, format, (char**)&args);
+}
+
+void format_string_raw(char *dest, char *src, void *args)
+{
+	format_string_part_from_raw(&dest, src, (char**)&args);
 }
 
 /**

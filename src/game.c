@@ -35,12 +35,14 @@
 #include "management/news_item.h"
 #include "management/research.h"
 #include "object.h"
+#include "openrct2.h"
 #include "peep/peep.h"
 #include "peep/staff.h"
 #include "platform/platform.h"
 #include "ride/ride.h"
 #include "ride/ride_ratings.h"
 #include "ride/vehicle.h"
+#include "ride/track.h"
 #include "scenario.h"
 #include "title.h"
 #include "tutorial.h"
@@ -59,12 +61,18 @@ int gGameSpeed = 1;
 
 void game_increase_game_speed()
 {
-	gGameSpeed = min(8, gGameSpeed + 1);
+	gGameSpeed = min(gConfigGeneral.debugging_tools ? 5 : 4, gGameSpeed + 1);
+	if (gGameSpeed == 5)
+		gGameSpeed = 8;
+	window_invalidate_by_class(WC_TOP_TOOLBAR);
 }
 
 void game_reduce_game_speed()
 {
 	gGameSpeed = max(1, gGameSpeed - 1);
+	if (gGameSpeed == 7)
+		gGameSpeed = 4;
+	window_invalidate_by_class(WC_TOP_TOOLBAR);
 }
 
 /**
@@ -94,7 +102,7 @@ void update_palette_effects()
 		if ((sint32)water_type != -1) {
 			palette = water_type->image_id;
 		}
-		rct_g1_element g1_element = RCT2_ADDRESS(RCT2_ADDRESS_G1_ELEMENTS, rct_g1_element)[palette];
+		rct_g1_element g1_element = g1Elements[palette];
 		int xoffset = g1_element.x_offset;
 		xoffset = xoffset * 4;
 		for (int i = 0; i < g1_element.width; i++) {
@@ -115,7 +123,7 @@ void update_palette_effects()
 				palette = water_type->image_id;
 			}
 
-			rct_g1_element g1_element = RCT2_ADDRESS(RCT2_ADDRESS_G1_ELEMENTS, rct_g1_element)[palette];
+			rct_g1_element g1_element = g1Elements[palette];
 			int xoffset = g1_element.x_offset;
 			xoffset = xoffset * 4;
 			for (int i = 0; i < g1_element.width; i++) {
@@ -140,7 +148,7 @@ void update_palette_effects()
 		if ((sint32)water_type != -1) {
 			p = water_type->var_06;
 		}
-		rct_g1_element g1_element = RCT2_ADDRESS(RCT2_ADDRESS_G1_ELEMENTS, rct_g1_element)[q + p];
+		rct_g1_element g1_element = g1Elements[q + p];
 		uint8* vs = &g1_element.offset[j * 3];
 		uint8* vd = RCT2_ADDRESS(0x01424A18, uint8);
 		int n = 5;
@@ -159,7 +167,7 @@ void update_palette_effects()
 		if ((sint32)water_type != -1) {
 			p = water_type->var_0A;
 		}
-		g1_element = RCT2_ADDRESS(RCT2_ADDRESS_G1_ELEMENTS, rct_g1_element)[q + p];
+		g1_element = g1Elements[q + p];
 		vs = &g1_element.offset[j * 3];
 		n = 5;
 		for (int i = 0; i < n; i++) {
@@ -175,7 +183,7 @@ void update_palette_effects()
 
 		j = ((uint16)(RCT2_GLOBAL(RCT2_ADDRESS_PALETTE_EFFECT_FRAME_NO, uint32) * -960) * 3) >> 16;
 		p = 1539;
-		g1_element = RCT2_ADDRESS(RCT2_ADDRESS_G1_ELEMENTS, rct_g1_element)[q + p];
+		g1_element = g1Elements[q + p];
 		vs = &g1_element.offset[j * 3];
 		vd += 12;
 		n = 3;
@@ -244,7 +252,7 @@ void game_update()
 				if (RCT2_GLOBAL(RCT2_ADDRESS_INPUT_STATE, uint8) == INPUT_STATE_RESET ||
 					RCT2_GLOBAL(RCT2_ADDRESS_INPUT_STATE, uint8) == INPUT_STATE_NORMAL
 				) {
-					if (RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32)) {
+					if (RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) & INPUT_FLAG_VIEWPORT_SCROLLING) {
 						RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) &= ~INPUT_FLAG_VIEWPORT_SCROLLING;
 						break;
 					}
@@ -254,6 +262,9 @@ void game_update()
 			}
 		}
 	}
+
+	news_item_update_current();
+	window_dispatch_update_all();
 
 	RCT2_GLOBAL(0x009A8C28, uint8) = 0;
 
@@ -323,11 +334,10 @@ void game_logic_update()
 	vehicle_sounds_update();
 	peep_update_crowd_noise();
 	climate_update_sound();
-	news_item_update_current();
 	editor_open_windows_for_current_step();
 
 	// Update windows
-	window_dispatch_update_all();
+	//window_dispatch_update_all();
 
 	if (RCT2_GLOBAL(RCT2_ADDRESS_ERROR_TYPE, uint8) != 0) {
 		rct_string_id title_text = STR_UNABLE_TO_LOAD_FILE;
@@ -358,7 +368,7 @@ static int game_check_affordability(int cost)
 	}
 	RCT2_GLOBAL(0x13CE952, uint32) = cost;
 	RCT2_GLOBAL(RCT2_ADDRESS_GAME_COMMAND_ERROR_TEXT, uint16) = 827;
-	return 0x80000000;
+	return MONEY32_UNDEFINED;
 }
 
 static uint32 game_do_command_table[58];
@@ -411,13 +421,13 @@ int game_do_command_p(int command, int *eax, int *ebx, int *ecx, int *edx, int *
 	}
 	cost = *ebx;
 
-	if (cost != 0x80000000) {
+	if (cost != MONEY32_UNDEFINED) {
 		// Check funds
 		insufficientFunds = 0;
 		if (RCT2_GLOBAL(0x009A8C28, uint8) == 1 && !(flags & 4) && !(flags & 0x20) && cost != 0)
 			insufficientFunds = game_check_affordability(cost);
 
-		if (insufficientFunds != 0x80000000) {
+		if (insufficientFunds != MONEY32_UNDEFINED) {
 			*ebx = original_ebx;
 			*edx = original_edx;
 			*esi = original_esi;
@@ -438,7 +448,7 @@ int game_do_command_p(int command, int *eax, int *ebx, int *ecx, int *edx, int *
 			}
 			*edx = *ebx;
 
-			if (*edx != 0x80000000 && *edx < cost)
+			if (*edx != MONEY32_UNDEFINED && *edx < cost)
 				cost = *edx;
 
 			// Decrement nest count
@@ -470,7 +480,7 @@ int game_do_command_p(int command, int *eax, int *ebx, int *ecx, int *edx, int *
 	if (RCT2_GLOBAL(0x009A8C28, uint8) == 0 && (flags & 1) && RCT2_GLOBAL(0x0141F568, uint8) == RCT2_GLOBAL(0x013CA740, uint8) && !(flags & 8))
 		window_error_open(RCT2_GLOBAL(RCT2_ADDRESS_GAME_COMMAND_ERROR_TITLE, uint16), RCT2_GLOBAL(RCT2_ADDRESS_GAME_COMMAND_ERROR_TEXT, uint16));
 
-	return 0x80000000;
+	return MONEY32_UNDEFINED;
 }
 
 void pause_toggle()
@@ -558,7 +568,7 @@ static int open_load_game_dialog()
  */
 static void load_landscape()
 {
-	window_loadsave_open(LOADSAVETYPE_LOAD | LOADSAVETYPE_LANDSCAPE);
+	window_loadsave_open(LOADSAVETYPE_LOAD | LOADSAVETYPE_LANDSCAPE, NULL);
 	return;
 
 	if (open_landscape_file_dialog() == 0) {
@@ -601,6 +611,11 @@ int game_load_save(const char *path)
 	log_verbose("loading saved game, %s", path);
 
 	strcpy((char*)0x0141EF68, path);
+	strcpy((char*)RCT2_ADDRESS_SAVED_GAMES_PATH_2, path);
+
+	strcpy(gScenarioSaveName, path_get_filename(path));
+	path_remove_extension(gScenarioSaveName);
+
 	file = fopen(path, "rb");
 	if (file == NULL) {
 		log_error("unable to open %s", path);
@@ -655,11 +670,11 @@ int game_load_save(const char *path)
 
 	if (!load_success){
 		set_load_objects_fail_reason();
-		if (RCT2_GLOBAL(0x9DE518,uint32) & (1<<5)){
+		if (RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) & INPUT_FLAG_5){
 			RCT2_GLOBAL(0x14241BC, uint32) = 2;
 			//call 0x0040705E Sets cursor position and something else. Calls maybe wind func 8 probably pointless
 			RCT2_GLOBAL(0x14241BC, uint32) = 0;
-			RCT2_GLOBAL(0x9DE518, uint32) &= ~(1<<5);
+			RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) &= ~INPUT_FLAG_5;
 		}
 		title_load();
 		rct2_endupdate();
@@ -695,7 +710,7 @@ int game_load_save(const char *path)
 	mainWindow->saved_view_y -= mainWindow->viewport->view_height >> 1;
 	window_invalidate(mainWindow);
 
-	sub_69E9A7(); 
+	reset_all_sprite_quadrant_placements();
 	scenery_set_default_placement_configuration();
 	window_new_ride_init_vars();
 	RCT2_GLOBAL(0x009DEB7C, uint16) = 0;
@@ -712,8 +727,9 @@ int game_load_save(const char *path)
 /*
  *
  * rct2: 0x0069E9A7
+ * Call after a rotation or loading of a save to reset sprite quadrants
  */
-void sub_69E9A7()
+void reset_all_sprite_quadrant_placements()
 {
 	for (rct_sprite* spr = g_sprite_list; spr < (rct_sprite*)RCT2_ADDRESS_SPRITES_NEXT_INDEX; spr++)
 		if (spr->unknown.sprite_identifier != 0xFF)
@@ -726,7 +742,7 @@ void sub_69E9A7()
  */
 static void load_game()
 {
-	window_loadsave_open(LOADSAVETYPE_LOAD | LOADSAVETYPE_GAME);
+	window_loadsave_open(LOADSAVETYPE_LOAD | LOADSAVETYPE_GAME, NULL);
 	return;
 
 	if (open_load_game_dialog() == 0) {
@@ -783,7 +799,7 @@ static int show_save_game_dialog(char *resultPath)
 
 char save_game()
 {
-	window_loadsave_open(LOADSAVETYPE_SAVE | LOADSAVETYPE_GAME);
+	window_loadsave_open(LOADSAVETYPE_SAVE | LOADSAVETYPE_GAME, gScenarioSaveName);
 	return 0;
 
 	char path[256];
@@ -797,7 +813,7 @@ char save_game()
 	path_set_extension(path, ".SV6");
 	
 	if (scenario_save(path, gConfigGeneral.save_plugin_data ? 1 : 0)) {
-		game_do_command(0, 1047, 0, -1, GAME_COMMAND_0, 0, 0);
+		game_do_command(0, 1047, 0, -1, GAME_COMMAND_SET_RIDE_APPEARANCE, 0, 0);
 		gfx_invalidate_screen();
 		return 1;
 	} else {
@@ -843,6 +859,7 @@ void rct2_exit()
 {
 	RCT2_CALLPROC_EBPSAFE(0x006E3879);
 	//Post quit message does not work in 0x6e3879 as its windows only.
+	openrct2_finish();
 }
 
 /**
@@ -860,10 +877,12 @@ void game_load_or_quit_no_save_prompt()
 			load_game();
 	} else if (RCT2_GLOBAL(RCT2_ADDRESS_SAVE_PROMPT_MODE, uint16) == 1) {
 		game_do_command(0, 1, 0, 1, GAME_COMMAND_LOAD_OR_QUIT, 0, 0);
+		tool_cancel();
 		if (RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) & INPUT_FLAG_5) {
 			RCT2_CALLPROC_EBPSAFE(0x0040705E);
 			RCT2_GLOBAL(RCT2_ADDRESS_INPUT_FLAGS, uint32) &= ~INPUT_FLAG_5;
 		}
+		gGameSpeed = 1;
 		title_load();
 		rct2_endupdate();
 	} else {
@@ -874,22 +893,22 @@ void game_load_or_quit_no_save_prompt()
 #pragma region Game command function table
 
 static uint32 game_do_command_table[58] = {
-	0x006B2FC5,
+	0,
 	0x0066397F,
 	0,
 	0x006C511D,
 	0x006C5B69,
 	0,
 	0x006B3F0F,
-	0x006B49D9,
+	0,
 	0,
 	0x006B52D4,
 	0, // 10
 	0,
 	0x006660A8,
 	0x0066640B,
-	0x006E0E01,
-	0x006E08F4,
+	0,
+	0,
 	0x006E650F,
 	0,
 	0x006A68AE,
@@ -897,39 +916,39 @@ static uint32 game_do_command_table[58] = {
 	0, // use new_game_command_table, original: 0x00663CCD, // 20
 	0x006B53E9,
 	0x00698D6C, // text input
-	0x0068C542,
-	0x0068C6D1,
+	0,
+	0,
 	0x0068BC01,
-	0x006E66A0,
-	0x006E6878,
+	0,
+	0,
 	0x006C5AE9,
 	0, // use new_game_command_table, original: 0x006BEFA1, 29
-	0x006C09D1, // 30
-	0x006C0B83,
-	0x006C0BB5,
-	0x00669C6D,
+	0, // 30
 	0,
-	0x006649BD,
+	0,
+	0,
+	0,
+	0,//0x006649BD, //buy_land_rights
 	0x006666E7,
 	0,
 	0x006CD8CE,
 	0,
 	0, // 40
 	0x006E519A,
-	0x006E5597,
+	0,
 	0x006B893C,
-	0x006B8E1B,
 	0,
 	0,
-	0x006D13FE,
+	0,
+	0,
 	0,
 	0x006CDEE4,
-	0x006B9E6D, // 50
-	0x006BA058,
-	0x006E0F26,
-	0x006E56B5,
-	0x006B909A,
-	0x006BA16A,
+	0, // 50
+	0,
+	0,
+	0,
+	0,
+	0,
 	0x006648E3,
 	0
 };
@@ -937,22 +956,22 @@ static uint32 game_do_command_table[58] = {
 void game_command_emptysub(int* eax, int* ebx, int* ecx, int* edx, int* esi, int* edi, int* ebp) {}
 
 static GAME_COMMAND_POINTER* new_game_command_table[58] = {
-	game_command_emptysub,
+	game_command_set_ride_appearance,
 	game_command_emptysub,
 	game_pause_toggle,
 	game_command_emptysub,
 	game_command_emptysub,
 	game_load_or_quit,
 	game_command_emptysub,
-	game_command_emptysub,
+	game_command_demolish_ride,
 	game_command_set_ride_status,
 	game_command_emptysub,
 	game_command_set_ride_name, // 10
 	game_command_set_ride_setting,
 	game_command_emptysub,
 	game_command_emptysub,
-	game_command_emptysub,
-	game_command_emptysub,
+	game_command_remove_scenery,
+	game_command_place_scenery,
 	game_command_emptysub,
 	game_command_place_footpath,
 	game_command_emptysub,
@@ -960,39 +979,39 @@ static GAME_COMMAND_POINTER* new_game_command_table[58] = {
 	game_command_change_surface_style, // 20
 	game_command_emptysub,
 	game_command_emptysub,
+	game_command_raise_land,
+	game_command_lower_land,
 	game_command_emptysub,
-	game_command_emptysub,
-	game_command_emptysub,
-	game_command_emptysub,
-	game_command_emptysub,
+	game_command_raise_water,
+	game_command_lower_water,
 	game_command_emptysub,
 	game_command_hire_new_staff_member, //game_command_emptysub,
-	game_command_emptysub, // 30
-	game_command_emptysub,
-	game_command_emptysub,
+	game_command_set_staff_patrol, // 30
+	game_command_fire_staff_member,
+	game_command_set_staff_order,
 	game_command_set_park_name,
 	game_command_set_park_open,
-	game_command_emptysub,
+	game_command_buy_land_rights, //game_command_emptysub,//game_command_buy_land_rights,
 	game_command_emptysub,
 	game_command_remove_park_entrance,
 	game_command_emptysub,
 	game_command_set_park_entrance_fee,
 	game_command_update_staff_colour, // 40
 	game_command_emptysub,
+	game_command_remove_fence,
 	game_command_emptysub,
-	game_command_emptysub,
-	game_command_emptysub,
+	game_command_remove_large_scenery,
 	game_command_set_current_loan,
 	game_command_set_research_funding,
-	game_command_emptysub,
+	game_command_place_track,
 	game_command_start_campaign,
 	game_command_emptysub,
-	game_command_emptysub, // 50
-	game_command_emptysub,
-	game_command_emptysub,
-	game_command_emptysub,
-	game_command_emptysub,
-	game_command_emptysub,
+	game_command_place_banner, // 50
+	game_command_remove_banner,
+	game_command_set_scenery_colour,
+	game_command_set_fence_colour,
+	game_command_set_large_scenery_colour,
+	game_command_set_banner_colour,
 	game_command_emptysub,
 	game_command_clear_scenery
 };

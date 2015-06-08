@@ -30,6 +30,7 @@
 #include "../world/footpath.h"
 #include "../world/map.h"
 #include "dropdown.h"
+#include "../interface/themes.h"
 
 enum {
 	PATH_CONSTRUCTION_MODE_LAND,
@@ -202,9 +203,6 @@ void window_footpath_open()
 	window_init_scroll_widgets(window);
 	window_push_others_right(window);
 	show_gridlines();
-	window->colours[0] = 24;
-	window->colours[1] = 24;
-	window->colours[2] = 24;
 
 	tool_cancel();
 	RCT2_GLOBAL(RCT2_ADDRESS_PATH_CONSTRUCTION_MODE, uint8) = PATH_CONSTRUCTION_MODE_LAND;
@@ -520,6 +518,7 @@ static void window_footpath_invalidate()
 	rct_window *w;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 	
 	// Press / unpress footpath and queue type buttons
 	w->pressed_widgets &= ~(1 << WIDX_FOOTPATH_TYPE);
@@ -667,15 +666,18 @@ static void window_footpath_mousedown_slope(int slope)
  */
 static void window_footpath_set_provisional_path_at_point(int x, int y)
 {
-	int z, slope, pathType;
+	int slope, pathType, interactionType;
 	rct_map_element *mapElement;
 
 	map_invalidate_selection_rect();
 	RCT2_GLOBAL(RCT2_ADDRESS_MAP_SELECTION_FLAGS, uint16) &= ~(1 << 2);
 
-	get_map_coordinates_from_pos(x, y, 0xFFDE, &x, &y, &z, &mapElement, NULL);
+	rct_xy16 mapCoord = { 0 };
+	get_map_coordinates_from_pos(x, y, VIEWPORT_INTERACTION_MASK_FOOTPATH & VIEWPORT_INTERACTION_MASK_TERRAIN, &mapCoord.x, &mapCoord.y, &interactionType, &mapElement, NULL);
+	x = mapCoord.x;
+	y = mapCoord.y;
 
-	if (z == 0) {
+	if (interactionType == VIEWPORT_INTERACTION_ITEM_NONE) {
 		RCT2_GLOBAL(RCT2_ADDRESS_MAP_SELECTION_FLAGS, uint16) &= ~(1 << 0);
 		footpath_provisional_update();
 	} else {
@@ -695,7 +697,7 @@ static void window_footpath_set_provisional_path_at_point(int x, int y)
 
 		// Set provisional path
 		slope = RCT2_ADDRESS(0x0098D8B4, uint8)[mapElement->properties.surface.slope & 0x1F];
-		if (z == 6)
+		if (interactionType == VIEWPORT_INTERACTION_ITEM_FOOTPATH)
 			slope = mapElement->properties.surface.slope & 7;
 		pathType = (RCT2_GLOBAL(RCT2_ADDRESS_SELECTED_PATH_TYPE, uint8) << 7) + RCT2_GLOBAL(RCT2_ADDRESS_SELECTED_PATH_ID, uint8);
 
@@ -717,7 +719,7 @@ static void window_footpath_set_selection_start_bridge_at_point(int screenX, int
 	RCT2_GLOBAL(RCT2_ADDRESS_MAP_SELECTION_FLAGS, uint16) &= ~(1 << 0) & ~(1 << 2);
 
 	footpath_bridge_get_info_from_pos(screenX, screenY, &x, &y, &direction, &mapElement);
-	if (x == 0x8000)
+	if (x == (sint16)0x8000)
 		return;
 
 	RCT2_GLOBAL(RCT2_ADDRESS_MAP_SELECTION_FLAGS, uint16) |= (1 << 0) | (1 << 2);
@@ -752,7 +754,7 @@ static void window_footpath_set_selection_start_bridge_at_point(int screenX, int
  */
 static void window_footpath_place_path_at_point(int x, int y)
 {
-	int z, presentType, selectedType, cost;
+	int interactionType, presentType, selectedType, z, cost;
 	rct_map_element *mapElement;
 
 	if (RCT2_GLOBAL(RCT2_ADDRESS_PATH_ERROR_OCCURED, uint8) != 0)
@@ -760,13 +762,17 @@ static void window_footpath_place_path_at_point(int x, int y)
 
 	footpath_provisional_update();
 
-	get_map_coordinates_from_pos(x, y, 0xFFDE, &x, &y, &z, &mapElement, NULL);
-	if (z == 0)
+	rct_xy16 mapCoord = { 0 };
+	get_map_coordinates_from_pos(x, y, VIEWPORT_INTERACTION_MASK_FOOTPATH & VIEWPORT_INTERACTION_MASK_TERRAIN, &mapCoord.x, &mapCoord.y, &interactionType, &mapElement, NULL);
+	x = mapCoord.x;
+	y = mapCoord.y;
+
+	if (interactionType == VIEWPORT_INTERACTION_ITEM_NONE)
 		return;
 
 	// Set path
 	presentType = RCT2_ADDRESS(0x0098D8B4, uint8)[mapElement->properties.path.type & 0x1F];
-	if (z == 6)
+	if (interactionType == VIEWPORT_INTERACTION_ITEM_FOOTPATH)
 		presentType = mapElement->properties.path.type & 7;
 	z = mapElement->base_height;
 	selectedType = (RCT2_GLOBAL(RCT2_ADDRESS_SELECTED_PATH_TYPE, uint8) << 7) + RCT2_GLOBAL(RCT2_ADDRESS_SELECTED_PATH_ID, uint8);
@@ -795,7 +801,7 @@ static void window_footpath_start_bridge_at_point(int screenX, int screenY)
 	rct_map_element *mapElement;
 
 	footpath_bridge_get_info_from_pos(screenX, screenY, &x, &y, &direction, &mapElement);
-	if (x == 0x8000)
+	if (x == (sint16)0x8000)
 		return;
 
 	if (map_element_get_type(mapElement) == MAP_ELEMENT_TYPE_SURFACE) {

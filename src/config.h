@@ -105,6 +105,11 @@ enum {
 	AUTOSAVE_NEVER
 };
 
+enum {
+	DATE_FORMAT_DMY,
+	DATE_FORMAT_MDY
+};
+
 typedef struct {
 	uint8 play_intro;
 	uint8 confirmation_prompt;
@@ -119,6 +124,7 @@ typedef struct {
 	sint8 landscape_smoothing;
 	sint8 show_height_as_units;
 	sint8 save_plugin_data;
+	uint8 debugging_tools;
 
 	//new
 	uint8 fullscreen_mode;
@@ -129,12 +135,19 @@ typedef struct {
 	uint16 language;
 	uint8 window_snap_proximity;
 	uint8 autosave_frequency;
+	uint8 hardware_display;
+	uint8 test_unfinished_tracks;
+	uint8 no_test_crashes;
+	uint8 date_format;
 } general_configuration;
 
 typedef struct {
 	uint8 toolbar_show_finances;
 	uint8 toolbar_show_research;
+	uint8 toolbar_show_cheats;
 	uint8 allow_subtype_switching;
+	uint8 console_small_font;
+	utf8string current_theme_preset;
 } interface_configuration;
 
 typedef struct {
@@ -143,7 +156,54 @@ typedef struct {
 	uint8 title_music;
 	uint8 sound;
 	uint8 ride_music;
+	uint8 master_volume;
+	uint8 music_volume;
 } sound_configuration;
+
+typedef struct {
+	uint8 fast_lift_hill;
+	uint8 disable_brakes_failure;
+	uint8 disable_all_breakdowns;
+	uint8 unlock_all_prices;
+} cheat_configuration;
+
+typedef struct {
+	utf8string channel;
+	uint8 enable_follower_peep_names;
+	uint8 enable_follower_peep_tracking;
+	uint8 enable_chat_peep_names;
+	uint8 enable_chat_peep_tracking;
+	uint8 enable_news;
+} twitch_configuration;
+
+typedef struct theme_window {
+	uint8 colours[6];
+
+	// Define any other settings for all windows here
+
+} theme_window;
+
+// Define structures for any other settings here
+typedef struct {
+	uint8 rct1_ride_lights;
+	uint8 rct1_park_lights;
+	uint8 rct1_scenario_font;
+} theme_features;
+
+
+typedef struct theme_preset {
+	char name[256];
+	theme_window *windows;
+
+	// Add structures for any other settings here
+	theme_features features;
+
+} theme_preset;
+
+typedef struct {
+	theme_preset *presets;
+	uint16 num_presets;
+} themes_configuration;
 
 typedef struct {
 	uint8 key;
@@ -153,6 +213,9 @@ typedef struct {
 extern general_configuration gConfigGeneral;
 extern interface_configuration gConfigInterface;
 extern sound_configuration gConfigSound;
+extern cheat_configuration gConfigCheat;
+extern twitch_configuration gConfigTwitch;
+extern themes_configuration gConfigThemes;
 
 extern uint16 gShortcutKeys[SHORTCUT_COUNT];
 
@@ -167,5 +230,9 @@ bool config_shortcut_keys_load();
 bool config_shortcut_keys_save();
 
 bool config_find_or_browse_install_directory();
+
+void themes_set_default();
+void themes_load_presets();
+bool themes_save_preset(int preset);
 
 #endif

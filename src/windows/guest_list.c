@@ -19,6 +19,7 @@
  *****************************************************************************/
 
 #include "../addresses.h"
+#include "../config.h"
 #include "../game.h"
 #include "../interface/widget.h"
 #include "../interface/window.h"
@@ -28,6 +29,7 @@
 #include "../sprites.h"
 #include "../world/sprite.h"
 #include "dropdown.h"
+#include "../interface/themes.h"
 
 enum {
 	PAGE_INDIVIDUAL,
@@ -173,9 +175,6 @@ void window_guest_list_open()
 	window->max_width = 500;
 	window->max_height = 450;
 	window->flags |= WF_RESIZABLE;
-	window->colours[0] = 1;
-	window->colours[1] = 15;
-	window->colours[2] = 15;
 }
 
 /**
@@ -339,7 +338,7 @@ static void window_guest_list_mousedown(int widgetIndex, rct_window*w, rct_widge
 			w->y + widget->top,
 			widget->bottom - widget->top + 1,
 			w->colours[1],
-			0x80,
+			DROPDOWN_FLAG_STAY_OPEN,
 			_window_guest_list_num_pages,
 			widget->right - widget->left - 3
 		);
@@ -363,7 +362,7 @@ static void window_guest_list_mousedown(int widgetIndex, rct_window*w, rct_widge
 			w->y + widget->top,
 			widget->bottom - widget->top + 1,
 			w->colours[1],
-			0x80,
+			DROPDOWN_FLAG_STAY_OPEN,
 			2,
 			widget->right - widget->left - 3
 		);
@@ -420,7 +419,7 @@ static void window_guest_list_update(rct_window *w)
  */
 static void window_guest_list_scrollgetsize()
 {
-	int i, y, numGuests, spriteIndex;
+	int i, y, numGuests, spriteIndex, width, height;
 	rct_window *w;
 	rct_peep *peep;
 
@@ -471,18 +470,10 @@ static void window_guest_list_scrollgetsize()
 		window_invalidate(w);
 	}
 
-	#ifdef _MSC_VER
-	__asm mov ecx, 447
-	#else
-	__asm__ ( "mov ecx, 447 "  );
-	#endif
+	width = 447;
+	height = y;
 
-	#ifdef _MSC_VER
-	__asm mov edx, y
-	#else
-	__asm__ ( "mov edx, %[y] " : [y] "+m" (y) );
-	#endif
-
+	window_scrollsize_set_registers(width, height);
 }
 
 /**
@@ -571,6 +562,7 @@ static void window_guest_list_invalidate()
 	rct_window *w;
 
 	window_get_register(w);
+	colour_scheme_update(w);
 
 	w->pressed_widgets &= ~(1 << WIDX_TAB_1);
 	w->pressed_widgets &= ~(1 << WIDX_TAB_2);

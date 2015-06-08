@@ -171,9 +171,24 @@ static void sub_693BE5(rct_peep* peep, uint8 al){
 
 	// If NONE_1 or NONE_2
 	if (peep->action >= PEEP_ACTION_NONE_1){
-		peep->action = PEEP_STATE_FALLING;
+		peep->action_sprite_image_offset = 0;
 	}
 	sub_693B58(peep);
+}
+
+/**
+*
+*  rct2: 0x0069A512
+*/
+void remove_peep_from_ride(rct_peep* peep)
+{
+	if (peep->state == PEEP_STATE_QUEUING) {
+		remove_peep_from_queue(peep);
+	}
+	peep_decrement_num_riders(peep);
+	peep->state = PEEP_STATE_1;
+	peep_window_state_update(peep);
+	sub_693BE5(peep, 0);
 }
 
 static void peep_state_reset(rct_peep* peep){
@@ -199,8 +214,8 @@ void peep_check_if_lost(rct_peep* peep){
 		peep->var_F4 = 230;
 	}
 	peep_insert_new_thought(peep, PEEP_THOUGHT_TYPE_LOST, 0xFF);
-	if (peep->happiness_growth_rate < 30) peep->happiness_growth_rate = 0;
-	else peep->happiness_growth_rate -= 30;
+
+	peep->happiness_growth_rate = max(peep->happiness_growth_rate - 30, 0);
 }
 
 /* rct2: 0x69C26B
@@ -212,8 +227,7 @@ void peep_check_cant_find_ride(rct_peep* peep){
 	if (peep->var_C6 == 30 || peep->var_C6 == 60){
 		peep_insert_new_thought(peep, PEEP_THOUGHT_TYPE_CANT_FIND, peep->guest_heading_to_ride_id);
 
-		if (peep->happiness_growth_rate < 30) peep->happiness_growth_rate = 0;
-		else peep->happiness_growth_rate -= 30;
+		peep->happiness_growth_rate = max(peep->happiness_growth_rate - 30, 0);
 	}
 
 	peep->var_C6--;
@@ -238,8 +252,7 @@ void peep_check_cant_find_exit(rct_peep* peep){
 	if (peep->var_C6 == 1){
 		peep_insert_new_thought(peep, PEEP_THOUGHT_TYPE_CANT_FIND_EXIT, 0xFF);
 
-		if (peep->happiness_growth_rate < 30) peep->happiness_growth_rate = 0;
-		else peep->happiness_growth_rate -= 30;
+		peep->happiness_growth_rate = max(peep->happiness_growth_rate - 30, 0);
 	}
 
 	if (--peep->var_C6 == 0) peep->var_C6 = 90;
@@ -559,7 +572,7 @@ void peep_sprite_remove(rct_peep* peep){
 	//RCT2_CALLPROC_X(0x69A535, 0, 0, 0, 0, (int)peep, 0, 0);
 	//return;
 
-	RCT2_CALLPROC_X(0x0069A512, 0, 0, 0, 0, (int)peep, 0, 0);
+	remove_peep_from_ride(peep);
 	invalidate_sprite((rct_sprite*)peep);
 
 	window_close_by_number(WC_PEEP, peep->sprite_index);
@@ -576,7 +589,7 @@ void peep_sprite_remove(rct_peep* peep){
 
 		RCT2_ADDRESS(RCT2_ADDRESS_STAFF_MODE_ARRAY, uint8)[peep->staff_id] = 0;
 		peep->type = 0xFF;
-		sub_6C0C3F();
+		staff_update_greyed_patrol_areas();
 		peep->type = PEEP_TYPE_STAFF;
 
 		news_item_disable_news(NEWS_ITEM_PEEP, peep->sprite_index);
@@ -655,7 +668,7 @@ void peep_update_falling(rct_peep* peep){
 					if (peep->item_standard_flags & PEEP_ITEM_BALLOON){
 						peep->item_standard_flags &= ~PEEP_ITEM_BALLOON;
 
-						if (peep->sprite_type == 19 && peep->x != 0x8000){
+						if (peep->sprite_type == 19 && peep->x != (sint16)0x8000){
 							create_balloon(peep->x, peep->y, height, peep->balloon_colour, 0);
 							peep->var_45 |= (1 << 3);
 							peep_update_sprite_type(peep);
@@ -971,7 +984,7 @@ static void peep_update_ride_sub_state_0(rct_peep* peep){
 	uint8* car_array = RCT2_ADDRESS(0xF1AD78, uint8);
 
 	if (RCT2_ADDRESS(RCT2_ADDRESS_RIDE_FLAGS, uint32)[ride->type * 2] & RIDE_TYPE_FLAG_13){
-		if (ride->num_riders >= ride->var_0D0)
+		if (ride->num_riders >= ride->operation_option)
 			return;
 	}
 	else{
@@ -1189,7 +1202,7 @@ void peep_update_ride_sub_state_1(rct_peep* peep){
 
 		map_element = ride_get_station_start_track_element(ride, peep->current_ride_station);
 
-		uint8 direction_track = map_element->type & MAP_ELEMENT_DIRECTION_MASK;
+		uint8 direction_track = (!map_element ? 0 : map_element->type & MAP_ELEMENT_DIRECTION_MASK);
 
 		peep->var_37 = (direction_entrance << 2) | (direction_track << 4);
 
@@ -1234,7 +1247,7 @@ void peep_update_ride_sub_state_1(rct_peep* peep){
 
 		map_element = ride_get_station_start_track_element(ride, peep->current_ride_station);
 
-		uint8 direction_track = map_element->type & MAP_ELEMENT_DIRECTION_MASK;
+		uint8 direction_track = (!map_element ? 0 : map_element->type & MAP_ELEMENT_DIRECTION_MASK);
 
 		vehicle = GET_VEHICLE(ride->vehicles[peep->current_train]);
 		ride_entry = GET_RIDE_ENTRY(vehicle->ride_subtype);
@@ -1714,7 +1727,7 @@ static void peep_update_ride_sub_state_7(rct_peep* peep){
 
 	map_element = ride_get_station_start_track_element(ride, peep->current_ride_station);
 
-	uint8 station_direction = map_element->type & MAP_ELEMENT_DIRECTION_MASK;
+	uint8 station_direction = (!map_element ? 0 : map_element->type & MAP_ELEMENT_DIRECTION_MASK);
 
 	vehicle = GET_VEHICLE(ride->vehicles[peep->current_train]);
 	
@@ -2505,7 +2518,7 @@ static void peep_update_ride_sub_state_21(rct_peep* peep){
 	ride->total_customers++;
 	ride->window_invalidate_flags |= RIDE_INVALIDATE_RIDE_CUSTOMER;
 
-	RCT2_CALLPROC_X(0x0069A3A2, 0, peep->happiness / 64, 0, 0, 0, peep->current_ride * sizeof(rct_ride), 0);
+	ride_update_satisfaction(ride, peep->happiness / 64);
 }
 
 /* rct2: 0x691A30 
@@ -2752,7 +2765,7 @@ static void peep_update_mowing(rct_peep* peep){
 
 		if ((map_element->properties.surface.terrain & MAP_ELEMENT_SURFACE_TERRAIN_MASK) == (TERRAIN_GRASS << 5)){
 			map_element->properties.surface.grass_length = 0;
-			gfx_invalidate_scrollingtext(peep->next_x, peep->next_y, map_element->base_height * 8, map_element->base_height * 8 + 16);
+			gfx_invalidate_tile_if_zoomed(peep->next_x, peep->next_y, map_element->base_height * 8, map_element->base_height * 8 + 16);
 		}
 		peep->staff_lawns_mown++;
 		peep->var_45 |= (1 << 5);
@@ -2802,7 +2815,7 @@ static void peep_update_watering(rct_peep* peep){
 				continue;
 			
 			map_element->properties.scenery.age = 0;
-			gfx_invalidate_scrollingtext(x, y, map_element->base_height * 8, map_element->clearance_height * 8);
+			gfx_invalidate_tile_if_zoomed(x, y, map_element->base_height * 8, map_element->clearance_height * 8);
 			peep->staff_gardens_watered++;
 			peep->var_45 |= (1 << 4);	
 		} while (!map_element_is_last_for_tile(map_element++));
@@ -2872,7 +2885,7 @@ static void peep_update_emptying_bin(rct_peep* peep){
 
 		map_element->properties.path.addition_status |= ((3 << peep->var_37) << peep->var_37);
 
-		gfx_invalidate_scrollingtext(peep->next_x, peep->next_y, map_element->base_height * 8, map_element->clearance_height * 8);
+		gfx_invalidate_tile_if_zoomed(peep->next_x, peep->next_y, map_element->base_height * 8, map_element->clearance_height * 8);
 
 		peep->staff_bins_emptied++;
 		peep->var_45 |= (1 << 4);
@@ -3110,7 +3123,7 @@ static int peep_update_walking_find_bench(rct_peep* peep){
 	uint8 additions = map_element->properties.path.additions & 0xF;
 
 	if (!additions) return 0;
-	rct_scenery_entry* sceneryEntry = RCT2_ADDRESS(0x9ADA50, rct_scenery_entry*)[additions];
+	rct_scenery_entry* sceneryEntry = g_pathBitSceneryEntries[additions - 1];
 
 	if (!(sceneryEntry->path_bit.var_06 & 0x2))return 0;
 
@@ -3187,7 +3200,7 @@ static int peep_update_walking_find_bin(rct_peep* peep){
 	uint8 additions = map_element->properties.path.additions & 0xF;
 
 	if (!additions) return 0;
-	rct_scenery_entry* sceneryEntry = RCT2_ADDRESS(0x9ADA50, rct_scenery_entry*)[additions];
+	rct_scenery_entry* sceneryEntry = g_pathBitSceneryEntries[additions - 1];
 
 	if (!(sceneryEntry->path_bit.var_06 & 0x1))return 0;
 
@@ -3264,7 +3277,7 @@ static void peep_update_walking_break_scenery(rct_peep* peep){
 	uint8 additions = map_element->properties.path.additions & 0xF;
 
 	if (!additions) return;
-	rct_scenery_entry* sceneryEntry = RCT2_ADDRESS(0x9ADA50, rct_scenery_entry*)[additions];
+	rct_scenery_entry* sceneryEntry = g_pathBitSceneryEntries[additions - 1];
 
 	if (!(sceneryEntry->path_bit.var_06 & 0x4))return;
 
@@ -3325,7 +3338,7 @@ static void peep_update_buying(rct_peep* peep)
 			return;
 		}
 
-		if (ride->type == RIDE_TYPE_ATM){
+		if (ride->type == RIDE_TYPE_CASH_MACHINE){
 			if (peep->current_ride != peep->previous_ride){
 				peep->cash_in_pocket += MONEY(50,00);
 			}
@@ -3345,7 +3358,7 @@ static void peep_update_buying(rct_peep* peep)
 	uint8 item_bought = 0;
 
 	if (peep->current_ride != peep->previous_ride){
-		if (ride->type == RIDE_TYPE_ATM){
+		if (ride->type == RIDE_TYPE_CASH_MACHINE){
 			item_bought = !(RCT2_CALLPROC_X(0x0069AEB7, peep->current_ride << 8, 0, 0, 0, (int)peep, 0, 0) & 0x100);
 
 			if (!item_bought){
@@ -3440,7 +3453,7 @@ static void peep_update_using_bin(rct_peep* peep){
 			return;
 		}
 
-		rct_scenery_entry* sceneryEntry = RCT2_ADDRESS(0x9ADA50, rct_scenery_entry*)[additions];
+		rct_scenery_entry* sceneryEntry = g_pathBitSceneryEntries[additions - 1];
 		if (!(sceneryEntry->path_bit.var_06 & 1)){
 			peep_state_reset(peep);
 			return;
@@ -3525,7 +3538,7 @@ static void peep_update_using_bin(rct_peep* peep){
 		// Then placeing the new value.
 		map_element->properties.path.addition_status |= rubbish_in_bin << selected_bin;
 
-		gfx_invalidate_scrollingtext(peep->next_x, peep->next_y, map_element->base_height << 3, map_element->clearance_height << 3);
+		gfx_invalidate_tile_if_zoomed(peep->next_x, peep->next_y, map_element->base_height << 3, map_element->clearance_height << 3);
 		peep_state_reset(peep);
 	}
 }
@@ -3831,7 +3844,7 @@ static int peep_update_patrolling_find_bin(rct_peep* peep){
 
 	if (additions == 0)return 0;
 
-	rct_scenery_entry* sceneryEntry = RCT2_ADDRESS(0x9ADA50, rct_scenery_entry*)[additions];
+	rct_scenery_entry* sceneryEntry = g_pathBitSceneryEntries[additions - 1];
 
 	if (!(sceneryEntry->path_bit.var_06 & 1))
 		return 0;
@@ -4124,7 +4137,7 @@ static void peep_update_walking(rct_peep* peep){
 
 	if (additions){
 		if (!(map_element->properties.path.additions & 0x80)){
-			rct_scenery_entry* sceneryEntry = RCT2_ADDRESS(0x9ADA50, rct_scenery_entry*)[additions];
+			rct_scenery_entry* sceneryEntry = g_pathBitSceneryEntries[additions - 1];
 
 			if (!(sceneryEntry->path_bit.var_06 & 0x2)) ebp = 9;
 		}
@@ -4565,7 +4578,10 @@ void peep_update_crowd_noise()
 			// Load and play crowd noise
 #ifdef USE_MIXER
 			if (!gCrowdSoundChannel) {
-				gCrowdSoundChannel = Mixer_Play_Music(PATH_ID_CSS2);
+				gCrowdSoundChannel = Mixer_Play_Music(PATH_ID_CSS2, MIXER_LOOP_INFINITE, false);
+				if (gCrowdSoundChannel) {
+					Mixer_Channel_SetGroup(gCrowdSoundChannel, MIXER_GROUP_NONE);
+				}
 			}
 			if (gCrowdSoundChannel) {
 				Mixer_Channel_Volume(gCrowdSoundChannel, DStoMixerVolume(volume));
@@ -4607,7 +4623,7 @@ void peep_applause()
 		// Release balloon
 		if (peep->item_standard_flags & PEEP_ITEM_BALLOON) {
 			peep->item_standard_flags &= ~PEEP_ITEM_BALLOON;
-			if (peep->x != 0x8000) {
+			if (peep->x != (sint16)0x8000) {
 				create_balloon(peep->x, peep->y, peep->z + 9, peep->balloon_colour, 0);
 				peep->var_45 |= 8;
 				peep_update_sprite_type(peep);
@@ -5260,7 +5276,7 @@ static void peep_stop_purchase_thought(rct_peep* peep, uint8 ride_type){
 		thought_type = PEEP_THOUGHT_TYPE_THIRSTY;
 		if (!(RCT2_ADDRESS(0x97CF40, uint32)[ride_type * 2] & 0x1000000)){
 			thought_type = PEEP_THOUGHT_RUNNING_OUT;
-			if (ride_type != RIDE_TYPE_ATM){
+			if (ride_type != RIDE_TYPE_CASH_MACHINE){
 				thought_type = PEEP_THOUGHT_TYPE_BATHROOM;
 				if (!(RCT2_ADDRESS(0x97CF40, uint32)[ride_type * 2] & 0x2000000)){
 					return;

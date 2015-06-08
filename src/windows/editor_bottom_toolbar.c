@@ -33,6 +33,7 @@
 #include "../util/util.h"
 #include "../world/scenery.h"
 #include "error.h"
+#include "../interface/themes.h"
 
 enum {
 	WIDX_PREVIOUS_IMAGE,		// 1
@@ -140,15 +141,6 @@ void window_editor_bottom_toolbar_open()
 		(1 << WIDX_NEXT_IMAGE);
 
 	window_init_scroll_widgets(window);
-	window->colours[0] = 150;
-	window->colours[1] = 150;
-	window->colours[2] = 141;
-
-	if (RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & (SCREEN_FLAGS_TRACK_DESIGNER | SCREEN_FLAGS_TRACK_MANAGER)) {
-		window->colours[0] = 135;
-		window->colours[1] = 135;
-		window->colours[2] = 135;
-	}
 }
 
 /**
@@ -322,7 +314,7 @@ void window_editor_bottom_toolbar_jump_forward_to_save_scenario()
 
 	window_close_all();
 
-	window_loadsave_open(LOADSAVETYPE_SAVE | LOADSAVETYPE_SCENARIO);
+	window_loadsave_open(LOADSAVETYPE_SAVE | LOADSAVETYPE_SCENARIO, s6Info->name);
 	return;
 
 	if (!show_save_scenario_dialog(path)) {
@@ -391,11 +383,13 @@ void window_editor_bottom_toolbar_invalidate() {
 
 	window_get_register(w);
 
+	colour_scheme_update_by_class(w, (RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_FLAGS, uint8) & SCREEN_FLAGS_SCENARIO_EDITOR) ? WC_EDITOR_SCENARIO_BOTTOM_TOOLBAR : WC_EDITOR_TRACK_BOTTOM_TOOLBAR);
+
 	sint16 screenWidth = RCT2_GLOBAL(RCT2_ADDRESS_SCREEN_WIDTH, sint16);
-	window_editor_bottom_toolbar_widgets[WIDX_NEXT_IMAGE].left = screenWidth - 198;
-	window_editor_bottom_toolbar_widgets[WIDX_NEXT_IMAGE].right = screenWidth - 3;
-	window_editor_bottom_toolbar_widgets[WIDX_NEXT_STEP_BUTTON].left = screenWidth - 200;
-	window_editor_bottom_toolbar_widgets[WIDX_NEXT_STEP_BUTTON].right = screenWidth - 1;
+	window_editor_bottom_toolbar_widgets[WIDX_NEXT_IMAGE].left = screenWidth - 200;
+	window_editor_bottom_toolbar_widgets[WIDX_NEXT_IMAGE].right = screenWidth - 1;
+	window_editor_bottom_toolbar_widgets[WIDX_NEXT_STEP_BUTTON].left = screenWidth - 198;
+	window_editor_bottom_toolbar_widgets[WIDX_NEXT_STEP_BUTTON].right = screenWidth - 3;
 
 	window_editor_bottom_toolbar_widgets[WIDX_PREVIOUS_STEP_BUTTON].type = WWT_FLATBTN;
 	window_editor_bottom_toolbar_widgets[WIDX_NEXT_STEP_BUTTON].type = WWT_FLATBTN;

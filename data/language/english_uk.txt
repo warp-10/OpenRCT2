@@ -3787,5 +3787,6 @@ STR_5450    :Increase game speed
 STR_5451    :Open cheats window
 STR_5452    :Toggle visibility of toolbars
 STR_5453    :Select another ride
-STR_5454    :Disable clearance checks
-STR_5455    :Disable support limits
+STR_5454    :Enable sandbox mode
+STR_5455    :Disable clearance checks
+STR_5456    :Disable support limits
